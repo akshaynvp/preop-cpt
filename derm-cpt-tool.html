@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre-op CPT Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+  :root {
+    --bg:       #f4f3ef;
+    --bg2:      #eceae4;
+    --bg3:      #e2e0d8;
+    --border:   #d0cec4;
+    --border2:  #bbb9ae;
+    --text:     #1a1917;
+    --text2:    #5a5850;
+    --text3:    #8a8880;
+    --accent:   #1a1917;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'IBM Plex Sans', sans-serif;
+    --radius:   6px;
+    --ok-bg:    #d6ede0; --ok-fg:  #1a4d2e;
+    --unc-bg:   #fdf0d5; --unc-fg: #7a4f00;
+    --no-bg:    #fce8e8; --no-fg:  #7a1f1f;
+    --lit-bg:   #dde8fc; --lit-fg: #1a3a7a;
+    --unk-bg:   #ebebeb; --unk-fg: #555;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── layout ── */
+  .page { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  .masthead {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 2rem; padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .masthead-left h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .masthead-left p  { font-size: 12px; color: var(--text3); margin-top: 3px; font-family: var(--mono); }
+  .masthead-tag {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    background: var(--text); color: var(--bg);
+    padding: 3px 8px; border-radius: 3px; letter-spacing: 0.04em;
+    white-space: nowrap; margin-top: 2px;
+  }
+
+  /* ── form ── */
+  .field-group { margin-bottom: 1.5rem; }
+  .field-group-title {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3);
+    margin-bottom: 0.75rem; padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .field-row { display: flex; gap: 12px; margin-bottom: 0.75rem; align-items: flex-start; }
+  .field { flex: 1; }
+  .field.w140 { flex: 0 0 140px; }
+  .field.w180 { flex: 0 0 180px; }
+  .field label {
+    display: block; font-family: var(--mono); font-size: 11px;
+    color: var(--text2); margin-bottom: 5px; font-weight: 500;
+  }
+  .field label .req { color: #c0392b; }
+  .field label .opt { font-weight: 400; font-style: italic; color: var(--text3); }
+  input[type="text"], input[type="number"], select {
+    width: 100%; padding: 8px 10px; font-size: 13px;
+    font-family: var(--sans);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--text); outline: none;
+    transition: border-color 0.12s;
+  }
+  input:focus, select:focus { border-color: var(--text); }
+  .inline-unit { display: flex; align-items: center; gap: 8px; }
+  .inline-unit span { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+
+  .calc-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 12px;
+    font-family: var(--mono); font-size: 12px; color: var(--text2);
+    margin-bottom: 1rem; display: none;
+  }
+  .calc-box.show { display: block; }
+  .calc-box strong { color: var(--text); }
+
+  .err-box {
+    background: var(--no-bg); border: 1px solid #e5a0a0;
+    border-radius: var(--radius); padding: 8px 12px;
+    font-size: 13px; color: var(--no-fg);
+    margin-bottom: 0.75rem; display: none;
+  }
+
+  .go-btn {
+    width: 100%; padding: 10px 20px;
+    font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.03em;
+    background: var(--text); color: var(--bg);
+    border: 1px solid var(--text); border-radius: var(--radius);
+    cursor: pointer; transition: opacity 0.12s;
+  }
+  .go-btn:hover { opacity: 0.85; }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; margin-top: 8px; }
+
+  /* ── results ── */
+  .results-hdr {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin: 2rem 0 1rem; padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-hdr span { font-size: 15px; font-weight: 600; }
+  .new-btn {
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+  .new-btn:hover { color: var(--text); }
+
+  .card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 0.75rem; overflow: hidden;
+  }
+  .card-hdr {
+    padding: 7px 14px; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2);
+  }
+  .card-body { padding: 14px; }
+
+  /* cpt block */
+  .cpt-grid { font-family: var(--mono); font-size: 12.5px; line-height: 2; }
+  .cpt-row  { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .cpt-lbl  { color: var(--text2); min-width: 230px; font-size: 11.5px; }
+  .cpt-val  { font-weight: 500; color: var(--text); }
+  .cpt-su   { font-size: 11px; color: var(--text3); margin-left: 4px; }
+  .cpt-div  { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+  .sec-div  { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .sub-lbl  { font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 6px; }
+
+  /* legend */
+  .leg { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .leg td { padding: 4px 0; vertical-align: top; }
+  .leg td:first-child { font-family: var(--mono); color: var(--text2); width: 90px; white-space: nowrap; }
+  .note-txt { font-size: 11px; color: var(--text3); font-style: italic; margin-top: 8px; }
+
+  /* mohs badge */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 12px; border-radius: 3px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    margin-bottom: 8px; letter-spacing: 0.02em;
+  }
+  .b-ok  { background: var(--ok-bg);  color: var(--ok-fg); }
+  .b-unc { background: var(--unc-bg); color: var(--unc-fg); }
+  .b-no  { background: var(--no-bg);  color: var(--no-fg); }
+  .b-lit { background: var(--lit-bg); color: var(--lit-fg); }
+  .b-unk { background: var(--unk-bg); color: var(--unk-fg); }
+
+  .mohs-note   { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+  .mohs-action { font-size: 12px; color: var(--text); font-style: italic; margin-top: 4px; }
+  .mohs-loc    { font-size: 12px; color: var(--text3); margin-top: 6px; font-family: var(--mono); }
+  .lit-box {
+    font-size: 11.5px; color: var(--lit-fg);
+    background: var(--lit-bg); border-radius: var(--radius);
+    padding: 7px 10px; margin-top: 8px;
+    border: 1px solid #b3c8f5; line-height: 1.5;
+  }
+
+  /* slnb */
+  .slnb { font-size: 12px; padding: 8px 10px; border-radius: var(--radius); border: 1px solid; margin-top: 10px; line-height: 1.5; }
+  .sl-req { background: var(--unc-bg); color: var(--unc-fg); border-color: #f0d070; }
+  .sl-con { background: var(--lit-bg); color: var(--lit-fg); border-color: #b3c8f5; }
+  .sl-ni  { background: var(--bg2);    color: var(--text2);  border-color: var(--border); }
+  .sl-ttl { font-weight: 600; margin-bottom: 3px; }
+  .sl-src { margin-top: 4px; font-size: 11px; opacity: 0.75; font-style: italic; }
+
+  /* margin */
+  .m-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+  .m-lbl { font-size: 12px; color: var(--text2); min-width: 190px; font-family: var(--mono); font-size: 11.5px; }
+  .m-val { font-family: var(--mono); font-size: 12.5px; font-weight: 500; color: var(--text); }
+  .fl { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; margin-left: 6px; font-weight: 500; letter-spacing: 0.03em; }
+  .fl-ok  { background: var(--ok-bg);  color: var(--ok-fg); }
+  .fl-low { background: var(--no-bg);  color: var(--no-fg); }
+  .fl-inf { background: var(--unc-bg); color: var(--unc-fg); }
+  .m-note { font-size: 11.5px; color: var(--text2); margin-top: 5px; line-height: 1.55; }
+  .m-src  { font-size: 11px; color: var(--text3); font-style: italic; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead">
+    <div class="masthead-left">
+      <h1>Pre-op CPT Tool</h1>
+      <p>Dermatology · Mohs AUC · Margin guidance · SLNB prompts</p>
+    </div>
+    <div class="masthead-tag">CLINICAL TOOL</div>
+  </div>
+
+  <div id="form-section">
+    <div class="field-group">
+      <div class="field-group-title">Diagnosis</div>
+      <div class="field-row">
+        <div class="field">
+          <label for="diagnosis">Diagnosis <span class="req">*</span></label>
+          <input type="text" id="diagnosis" placeholder="e.g. BCC, SCC, melanoma in situ, DFSP, MCC, cyst" autocomplete="off">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field w180">
+          <label for="subtype">Tumor subtype <span class="opt">(Mohs AUC)</span></label>
+          <select id="subtype">
+            <option value="">— unknown / N/A —</option>
+            <optgroup label="BCC subtypes">
+              <option value="bcc_superficial">BCC superficial</option>
+              <option value="bcc_nodular">BCC nodular</option>
+              <option value="bcc_aggressive">BCC aggressive (morpheaform / infiltrative / micronodular)</option>
+            </optgroup>
+            <optgroup label="SCC subtypes">
+              <option value="scc_nonaggressive">SCC nonaggressive</option>
+              <option value="scc_aggressive">SCC aggressive</option>
+              <option value="scc_verrucous">SCC verrucous</option>
+              <option value="scc_katype">SCC KA-type</option>
+              <option value="scc_sccis_bowen">SCCIS / Bowen</option>
+              <option value="scc_ak_focal_sccis">AK with focal SCCIS</option>
+            </optgroup>
+            <optgroup label="Melanocytic">
+              <option value="lm">LM (lentigo maligna)</option>
+              <option value="mis">MIS (melanoma in situ, non-LM)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="field w140">
+          <label for="pr">Primary or recurrent</label>
+          <select id="pr">
+            <option value="primary" selected>Primary</option>
+            <option value="recurrent">Recurrent</option>
+          </select>
+        </div>
+        <div class="field w140">
+          <label for="ic">Immunocompromised?</label>
+          <select id="ic">
+            <option value="no" selected>No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">Location</div>
+      <div class="field-row">
+        <div class="field">
+          <label for="location">Lesion location <span class="req">*</span></label>
+          <input type="text" id="location" placeholder="e.g. left cheek, right forearm, nose tip, scalp" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">Measurements</div>
+      <div class="field-row">
+        <div class="field">
+          <label for="diameter">Clinical lesion diameter <span class="req">*</span></label>
+          <div class="inline-unit">
+            <input type="number" id="diameter" placeholder="0.0" min="0" step="0.1" style="flex:1">
+            <span>cm</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="margin">Clinical margin <span class="req">*</span></label>
+          <div class="inline-unit">
+            <input type="number" id="margin" placeholder="0.0" min="0" step="0.1" style="flex:1">
+            <span>cm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-box" id="calc-box"></div>
+    <div class="err-box"  id="err-box"></div>
+    <button class="go-btn" id="go-btn">→ GENERATE CPT CODES</button>
+    <p class="hint">Results are estimates — verify all codes prior to billing.</p>
+  </div>
+
+  <div id="out" style="display:none"></div>
+</div>
+
+<script>
+(function(){
+
+function r2(n){ return Math.round(n*100)/100; }
+
+document.getElementById('diameter').addEventListener('input', updateCalc);
+document.getElementById('margin').addEventListener('input', updateCalc);
+function updateCalc(){
+  var d=parseFloat(document.getElementById('diameter').value);
+  var m=parseFloat(document.getElementById('margin').value);
+  var el=document.getElementById('calc-box');
+  if(!isNaN(d)&&d>0&&!isNaN(m)&&m>=0){
+    var exc=r2(d+2*m), rep=r2(3*exc);
+    el.innerHTML='<strong>Excision length:</strong> '+exc.toFixed(1)+' cm &nbsp;&nbsp; <strong>Repair length:</strong> '+rep.toFixed(1)+' cm';
+    el.classList.add('show');
+  } else { el.classList.remove('show'); }
+}
+
+document.getElementById('go-btn').addEventListener('click', function(){
+  var err=document.getElementById('err-box');
+  err.style.display='none';
+  var diagnosis=document.getElementById('diagnosis').value.trim();
+  var location =document.getElementById('location').value.trim();
+  var diameter =parseFloat(document.getElementById('diameter').value);
+  var margin   =parseFloat(document.getElementById('margin').value);
+  var subtype  =document.getElementById('subtype').value;
+  var pr       =document.getElementById('pr').value;
+  var ic       =document.getElementById('ic').value;
+  if(!diagnosis){err.textContent='Please enter a diagnosis.'; err.style.display='block'; return;}
+  if(!location) {err.textContent='Please enter the lesion location.'; err.style.display='block'; return;}
+  if(isNaN(diameter)||diameter<=0){err.textContent='Please enter a valid lesion diameter.'; err.style.display='block'; return;}
+  if(isNaN(margin)||margin<0)     {err.textContent='Please enter a valid clinical margin.'; err.style.display='block'; return;}
+  var excisionSize=r2(diameter+2*margin);
+  var repairLength=r2(3*excisionSize);
+  var diagType=classifyDx(diagnosis);
+  var mal=diagType!=='BENIGN';
+  var area=classifyLoc(location)||'L';
+  var areaLbl=area==='H'?'Area H (high-risk)':area==='M'?'Area M (medium-risk)':'Area L (low-risk)';
+  render({
+    diagnosis:diagnosis, location:location, diameter:diameter, margin:margin,
+    subtype:subtype, pr:pr, ic:ic,
+    excisionSize:excisionSize, repairLength:repairLength,
+    diagType:diagType, mal:mal, area:area, areaLbl:areaLbl,
+    icd10:   getICD10(diagType,location),
+    excision:getExcision(mal,area,excisionSize),
+    repair:  getRepair(area,location,repairLength),
+    dest:    getDest(mal,area,diameter),
+    mohs:    getMohs(diagType,subtype,pr,area,diameter,ic),
+    mohsCPT: getMohsCPT(area),
+    marginG: getMarginG(diagType,subtype,pr,area,diameter,margin),
+    slnb:    getSLNB(diagType,subtype,diameter)
+  });
+});
+
+function doReset(){
+  ['diagnosis','location','diameter','margin'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('subtype').value='';
+  document.getElementById('pr').value='primary';
+  document.getElementById('ic').value='no';
+  document.getElementById('calc-box').classList.remove('show');
+  document.getElementById('err-box').style.display='none';
+  document.getElementById('out').style.display='none';
+  document.getElementById('out').innerHTML='';
+  document.getElementById('form-section').style.display='block';
+}
+
+// ── diagnosis ──────────────────────────────────────────────────────────────
+var LIT={
+  DFSP:           {note:'Mohs surgery is the preferred treatment for DFSP at any location due to subclinical extension and high recurrence rates with standard excision (up to 50%). Not formally in the AAD/AUC table but strongly literature-supported.',action:'Refer to Mohs surgery.'},
+  MCC:            {note:'Mohs surgery is a preferred option for MCC, offering complete margin assessment. Not formally in the AAD/AUC table.',action:'Refer to Mohs surgery; multidisciplinary management recommended.'},
+  MAC:            {note:'Mohs surgery is the preferred treatment for MAC at any location due to perineural invasion and deep subclinical spread. Not in the AAD/AUC table.',action:'Refer to Mohs surgery.'},
+  SEBACEOUS_CA:   {note:'Mohs surgery is preferred for sebaceous carcinoma; recurrence rate ~6.4% after MMS. Not in the AAD/AUC table.',action:'Refer to Mohs surgery; consider ophthalmology co-management for periocular lesions.'},
+  EMPD:           {note:'Mohs surgery is the preferred treatment for EMPD due to clinically indistinct borders and high recurrence with standard excision. Not in the AAD/AUC table.',action:'Refer to Mohs surgery.'},
+  AFX:            {note:'Mohs surgery is the preferred treatment for AFX. Not in the AAD/AUC table.',action:'Refer to Mohs surgery.'},
+  LEIOMYOSARCOMA: {note:'Mohs surgery is literature-supported for cutaneous leiomyosarcoma. Not in the AAD/AUC table.',action:'Refer to Mohs surgery; systemic staging evaluation recommended.'},
+  KERATOACANTHOMA:{note:'Mohs surgery is literature-supported for KA, particularly large, recurrent, or cosmetically sensitive lesions. Not in the AAD/AUC table.',action:'Consider referral to Mohs surgery for recurrent or high-risk KA.'},
+  SPINDLE_CELL:   {note:'Mohs surgery is literature-supported for cutaneous spindle cell tumors. Not in the AAD/AUC table.',action:'Refer to Mohs surgery; pathologic subtype confirmation recommended.'},
+  ECCRINE_APOCRINE:{note:'Mohs surgery is preferred for eccrine/apocrine carcinomas due to subclinical spread. Not in the AAD/AUC table.',action:'Refer to Mohs surgery.'},
+  TRICHILEMMAL:   {note:'Mohs surgery is literature-supported for trichilemmal carcinoma. Not in the AAD/AUC table.',action:'Refer to Mohs surgery.'},
+  MUCINOUS_CA:    {note:'Mohs surgery is preferred for primary cutaneous mucinous carcinoma. Not in the AAD/AUC table.',action:'Refer to Mohs surgery; rule out metastatic mucinous carcinoma from internal primary.'}
+};
+
+function classifyDx(d){
+  d=d.toLowerCase();
+  if(d.indexOf('dermatofibrosarcoma')>=0||/\bdfsp\b/.test(d))return'DFSP';
+  if(d.indexOf('merkel')>=0||/\bmcc\b/.test(d))return'MCC';
+  if(d.indexOf('microcystic adnexal')>=0||/\bmac\b(?!\w)/.test(d))return'MAC';
+  if(d.indexOf('sebaceous')>=0&&(d.indexOf('carcinoma')>=0||d.indexOf(' ca')>=0))return'SEBACEOUS_CA';
+  if(d.indexOf('extramammary paget')>=0||/\bempd\b/.test(d)||(d.indexOf('paget')>=0&&d.indexOf('breast')<0))return'EMPD';
+  if(d.indexOf('atypical fibroxanthoma')>=0||/\bafx\b/.test(d))return'AFX';
+  if(d.indexOf('leiomyosarcoma')>=0&&d.indexOf('uterine')<0)return'LEIOMYOSARCOMA';
+  if(d.indexOf('keratoacanthoma')>=0&&d.indexOf('ka-type')<0&&d.indexOf('ka type')<0)return'KERATOACANTHOMA';
+  if(d.indexOf('spindle cell')>=0)return'SPINDLE_CELL';
+  if(d.indexOf('porocarcinoma')>=0||d.indexOf('hidradenocarcinoma')>=0||d.indexOf('spiradenocarcinoma')>=0||(d.indexOf('eccrine')>=0&&d.indexOf('carcinoma')>=0)||(d.indexOf('apocrine')>=0&&d.indexOf('carcinoma')>=0))return'ECCRINE_APOCRINE';
+  if(d.indexOf('trichilemmal carcinoma')>=0)return'TRICHILEMMAL';
+  if(d.indexOf('mucinous carcinoma')>=0||(d.indexOf('mucinous')>=0&&d.indexOf('skin')>=0))return'MUCINOUS_CA';
+  if(d.indexOf('basal cell')>=0||/\bbcc\b/.test(d))return'BCC';
+  if(d.indexOf('squamous cell')>=0||/\bscc\b/.test(d)||d.indexOf('bowen')>=0||d.indexOf('sccis')>=0)return'SCC';
+  if(d.indexOf('melanoma in situ')>=0||/\bmis\b/.test(d)||/\bmmis\b/.test(d)||d.indexOf('lentigo maligna')>=0||/\blm\b/.test(d))return'LM_MIS';
+  if(d.indexOf('melanoma')>=0)return'MELANOMA_INV';
+  return'BENIGN';
+}
+
+function classifyLoc(loc){
+  var l=loc.toLowerCase();
+  var H=['eyelid','nose','lip','ear','temple','canthi','canthus','periorbital','perinasal','perioral','nasolabial','preauricular','postauricular','pinna','ala','columella','philtrum'];
+  var M=['scalp','forehead','cheek','chin','neck','hand','finger','thumb','palm','foot','toe','plantar','genital','groin','perineum','jaw','mandible','zygomatic','malar'];
+  var L=['trunk','back','chest','abdomen','shoulder','arm','forearm','elbow','wrist','thigh','leg','knee','shin','calf','buttock','flank','axilla'];
+  for(var i=0;i<H.length;i++)if(l.indexOf(H[i])>=0)return'H';
+  for(var i=0;i<M.length;i++)if(l.indexOf(M[i])>=0)return'M';
+  for(var i=0;i<L.length;i++)if(l.indexOf(L[i])>=0)return'L';
+  if(l.indexOf('face')>=0||l.indexOf('facial')>=0)return'H';
+  return null;
+}
+
+// ── ICD-10 ─────────────────────────────────────────────────────────────────
+function getICD10(dt,loc){
+  var l=loc.toLowerCase();
+  function has(a){for(var i=0;i<a.length;i++)if(l.indexOf(a[i])>=0)return true;return false;}
+  if(dt==='BCC'){
+    if(has(['face','cheek','forehead','chin','temple']))return{c:'C44.319',d:'BCC of skin of face'};
+    if(l.indexOf('ear')>=0)return{c:'C44.219',d:'BCC of skin of ear'};
+    if(l.indexOf('scalp')>=0||l.indexOf('neck')>=0)return{c:'C44.41',d:'BCC of skin of scalp and neck'};
+    if(l.indexOf('nose')>=0)return{c:'C44.319',d:'BCC of skin of nose'};
+    if(l.indexOf('eyelid')>=0)return{c:'C44.119',d:'BCC of skin of eyelid'};
+    if(l.indexOf('lip')>=0)return{c:'C44.09',d:'BCC of skin of lip'};
+    if(has(['trunk','back','chest','abdomen']))return{c:'C44.519',d:'BCC of skin of trunk'};
+    if(has(['arm','forearm','elbow','wrist','hand']))return{c:'C44.619',d:'BCC of skin of upper limb'};
+    if(has(['leg','thigh','knee','shin','foot']))return{c:'C44.719',d:'BCC of skin of lower limb'};
+    return{c:'C44.99',d:'BCC of skin, unspecified'};
+  }
+  if(dt==='SCC'){
+    if(has(['face','cheek','forehead','chin','temple']))return{c:'C44.329',d:'SCC of skin of face'};
+    if(l.indexOf('ear')>=0)return{c:'C44.229',d:'SCC of skin of ear'};
+    if(l.indexOf('scalp')>=0||l.indexOf('neck')>=0)return{c:'C44.42',d:'SCC of skin of scalp and neck'};
+    if(l.indexOf('nose')>=0)return{c:'C44.329',d:'SCC of skin of nose'};
+    if(l.indexOf('eyelid')>=0)return{c:'C44.129',d:'SCC of skin of eyelid'};
+    if(l.indexOf('lip')>=0)return{c:'C44.029',d:'SCC of skin of lip'};
+    if(has(['trunk','back','chest','abdomen']))return{c:'C44.529',d:'SCC of skin of trunk'};
+    if(has(['arm','forearm','hand']))return{c:'C44.629',d:'SCC of skin of upper limb'};
+    if(has(['leg','thigh','foot']))return{c:'C44.729',d:'SCC of skin of lower limb'};
+    return{c:'C44.929',d:'SCC of skin, unspecified'};
+  }
+  if(dt==='LM_MIS'){
+    if(has(['face','cheek','forehead','chin','nose','eyelid','ear','lip','temple']))return{c:'D03.39',d:'Melanoma in situ of face'};
+    if(l.indexOf('scalp')>=0||l.indexOf('neck')>=0)return{c:'D03.4',d:'Melanoma in situ of scalp and neck'};
+    if(has(['trunk','back','chest','abdomen']))return{c:'D03.59',d:'Melanoma in situ of trunk'};
+    if(has(['arm','forearm','hand','shoulder']))return{c:'D03.69',d:'Melanoma in situ of upper limb'};
+    if(has(['leg','thigh','foot']))return{c:'D03.79',d:'Melanoma in situ of lower limb'};
+    return{c:'D03.9',d:'Melanoma in situ, unspecified'};
+  }
+  var map={MELANOMA_INV:{c:'C43.9',d:'Malignant melanoma of skin, unspecified'},MCC:{c:'C4A.9',d:'Merkel cell carcinoma, unspecified'},DFSP:{c:'C49.9',d:'DFSP / malignant neoplasm of connective tissue'},AFX:{c:'C44.99',d:'Other malignant neoplasm of skin (AFX)'},EMPD:{c:'C44.590',d:'Other specified malignant neoplasm of skin (EMPD)'},MAC:{c:'C44.99',d:'Malignant neoplasm of skin (MAC) — verify site-specific code'},SEBACEOUS_CA:{c:'C44.99',d:'Sebaceous carcinoma — verify site-specific code'},LEIOMYOSARCOMA:{c:'C49.9',d:'Leiomyosarcoma of soft tissue'},KERATOACANTHOMA:{c:'L85.8',d:'Keratoacanthoma'},SPINDLE_CELL:{c:'C44.99',d:'Spindle cell tumor — verify subtype code'},ECCRINE_APOCRINE:{c:'C44.99',d:'Eccrine/apocrine carcinoma — verify site-specific code'},TRICHILEMMAL:{c:'C44.99',d:'Trichilemmal carcinoma — verify site-specific code'},MUCINOUS_CA:{c:'C44.99',d:'Mucinous carcinoma of skin — verify site-specific code'}};
+  return map[dt]||{c:'L98.9',d:'Disorder of skin, unspecified (benign — specify)'};
+}
+
+// ── excision ───────────────────────────────────────────────────────────────
+function getExcision(mal,area,size){
+  var base=mal?(area==='H'?11640:area==='M'?11620:11600):(area==='H'?11440:area==='M'?11420:11400);
+  var grp=area==='H'?'face/ears/eyelids/nose/lips':area==='M'?'scalp/neck/hands/feet':'trunk/extremities';
+  var off,sd;
+  if(size<=0.5){off=0;sd='≤0.5 cm';}else if(size<=1.0){off=1;sd='0.6–1.0 cm';}else if(size<=2.0){off=2;sd='1.1–2.0 cm';}else if(size<=3.0){off=3;sd='2.1–3.0 cm';}else if(size<=4.0){off=4;sd='3.1–4.0 cm';}else if(size<=5.0){off=5;sd='4.1–5.0 cm';}else{off=6;sd='>5.0 cm';}
+  return{c:String(base+off),d:'Excision, '+(mal?'malignant':'benign')+' lesion, '+grp+', '+sd};
+}
+
+// ── repair ─────────────────────────────────────────────────────────────────
+var IG={
+  face:[{x:2.5,c:'12051',d:'Intermediate repair, face/ears/eyelids/nose/lips, ≤2.5 cm'},{x:5.0,c:'12052',d:'Intermediate repair, face/ears/eyelids/nose/lips, 2.6–5.0 cm'},{x:7.5,c:'12053',d:'Intermediate repair, face/ears/eyelids/nose/lips, 5.1–7.5 cm'},{x:12.5,c:'12054',d:'Intermediate repair, face/ears/eyelids/nose/lips, 7.6–12.5 cm'},{x:20.0,c:'12055',d:'Intermediate repair, face/ears/eyelids/nose/lips, 12.6–20.0 cm'},{x:30.0,c:'12056',d:'Intermediate repair, face/ears/eyelids/nose/lips, 20.1–30.0 cm'},{x:Infinity,c:'12057',d:'Intermediate repair, face/ears/eyelids/nose/lips, >30.0 cm'}],
+  trunk:[{x:2.5,c:'12031',d:'Intermediate repair, scalp/trunk/extremities, ≤2.5 cm'},{x:7.5,c:'12032',d:'Intermediate repair, scalp/trunk/extremities, 2.6–7.5 cm'},{x:12.5,c:'12034',d:'Intermediate repair, scalp/trunk/extremities, 7.6–12.5 cm'},{x:20.0,c:'12035',d:'Intermediate repair, scalp/trunk/extremities, 12.6–20.0 cm'},{x:30.0,c:'12036',d:'Intermediate repair, scalp/trunk/extremities, 20.1–30.0 cm'},{x:Infinity,c:'12037',d:'Intermediate repair, scalp/trunk/extremities, >30.0 cm'}],
+  neck:[{x:2.5,c:'12041',d:'Intermediate repair, neck/hands/feet/genitalia, ≤2.5 cm'},{x:7.5,c:'12042',d:'Intermediate repair, neck/hands/feet/genitalia, 2.6–7.5 cm'},{x:12.5,c:'12044',d:'Intermediate repair, neck/hands/feet/genitalia, 7.6–12.5 cm'},{x:20.0,c:'12045',d:'Intermediate repair, neck/hands/feet/genitalia, 12.6–20.0 cm'},{x:30.0,c:'12046',d:'Intermediate repair, neck/hands/feet/genitalia, 20.1–30.0 cm'},{x:Infinity,c:'12047',d:'Intermediate repair, neck/hands/feet/genitalia, >30.0 cm'}]
+};
+var CG={
+  face:[{x:1.0,c:'13150',d:'Complex repair, eyelids/nose/ears/lips, ≤1.0 cm'},{x:2.5,c:'13151',d:'Complex repair, eyelids/nose/ears/lips, 1.1–2.5 cm'},{x:7.5,c:'13152',d:'Complex repair, eyelids/nose/ears/lips, 2.6–7.5 cm'},{x:Infinity,c:'13153',d:'Complex repair, eyelids/nose/ears/lips, >7.5 cm (+add-on 13153)'}],
+  scalp:[{x:1.1,c:'13100',d:'Complex repair, scalp/trunk/extremities, ≤1.1 cm'},{x:7.5,c:'13101',d:'Complex repair, scalp/trunk/extremities, 2.6–7.5 cm'},{x:Infinity,c:'13102',d:'Complex repair, scalp/trunk/extremities, >7.5 cm (+add-on 13102)'}],
+  neck:[{x:1.1,c:'13120',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, ≤1.1 cm'},{x:7.5,c:'13121',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, 2.6–7.5 cm'},{x:Infinity,c:'13122',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, >7.5 cm (+add-on 13122)'}]
+};
+function fi(g,v){for(var i=0;i<g.length;i++)if(v<=g[i].x)return{e:g[i],i:i};return{e:g[g.length-1],i:g.length-1};}
+function getRepair(area,loc,rl){
+  var l=loc.toLowerCase();
+  function has(a){for(var i=0;i<a.length;i++)if(l.indexOf(a[i])>=0)return true;return false;}
+  var fC=has(['eyelid','nose','ear','lip','ala','pinna','columella']);
+  var fI=area==='H'||has(['face','facial','cheek','forehead','chin','temple','periorbital','nasolabial','preauricular','postauricular','philtrum']);
+  var nG=has(['neck','hand','finger','thumb','palm','foot','toe','plantar','genital']);
+  var ig=fI?IG.face:nG?IG.neck:IG.trunk;
+  var cg=fC?CG.face:(nG||area==='M')?CG.neck:CG.scalp;
+  var ir=fi(ig,rl),cr=fi(cg,rl);
+  return{int:ir.e,intUp:ir.i+1<ig.length?ig[ir.i+1]:null,cx:cr.e,cxUp:cr.i+1<cg.length?cg[cr.i+1]:null};
+}
+
+// ── destruction ────────────────────────────────────────────────────────────
+function getDest(mal,area,size){
+  if(!mal)return{c:'17000 / 17110',d:'Destruction benign/premalignant lesion (17000=first; 17110=up to 14 lesions)'};
+  var base=area==='H'?17280:area==='M'?17270:17260;
+  var grp=area==='H'?'face/ears/eyelids/nose/lips':area==='M'?'scalp/neck/hands/feet/genitalia':'trunk/extremities';
+  var off,sd;
+  if(size<=0.5){off=0;sd='≤0.5 cm';}else if(size<=1.0){off=1;sd='0.6–1.0 cm';}else if(size<=2.0){off=2;sd='1.1–2.0 cm';}else if(size<=3.0){off=3;sd='2.1–3.0 cm';}else if(size<=4.0){off=4;sd='3.1–4.0 cm';}else{off=5;sd='>4.0 cm';}
+  return{c:String(base+off),d:'Destruction malignant lesion, '+grp+', '+sd};
+}
+
+// ── Mohs CPT ───────────────────────────────────────────────────────────────
+function getMohsCPT(area){
+  return(area==='H'||area==='M')
+    ?{first:{c:'17311',d:'Mohs surgery, head/neck/hands/feet/genitalia — first stage, up to 5 tissue blocks'},addon:{c:'17312',d:'Mohs surgery, head/neck/hands/feet/genitalia — each additional stage (add-on)'}}
+    :{first:{c:'17313',d:'Mohs surgery, trunk/extremities — first stage, up to 5 tissue blocks'},addon:{c:'17314',d:'Mohs surgery, trunk/extremities — each additional stage (add-on)'}};
+}
+
+// ── Mohs AUC ───────────────────────────────────────────────────────────────
+function getMohs(dt,sub,pr,area,diam,ic){
+  var d=parseFloat(diam),isIC=ic==='yes',s=sub||'';
+  if(LIT[dt])return{res:'lit',note:LIT[dt].note,action:LIT[dt].action};
+  if(dt==='MELANOMA_INV')return{res:'unk',note:'Invasive melanoma is not typically treated with Mohs surgery. Wide local excision with SLNB is standard of care.',action:'Standard wide local excision; refer to surgical oncology as appropriate.'};
+  if(dt!=='BCC'&&dt!=='SCC'&&dt!=='LM_MIS')return{res:'unk',note:'Mohs AUC applies to BCC, SCC, and LM/MIS. This diagnosis may not be a primary Mohs indication.',action:''};
+  if(dt==='LM_MIS'){
+    if(area==='H'||area==='M')return{res:'ok',note:'LM/MIS on Area H or M.',action:'Consider referral to Mohs surgery.'};
+    if(pr==='recurrent')return{res:'ok',note:'Recurrent LM/MIS on Area L.',action:'Consider referral to Mohs surgery.'};
+    return{res:'unc',note:'Primary LM/MIS on Area L.',action:'Clinical judgment required; consider Mohs if additional risk factors present.'};
+  }
+  if(dt==='BCC'){
+    var ag=s==='bcc_aggressive',no=s==='bcc_nodular',su=s==='bcc_superficial';
+    if(area==='H')return{res:'ok',note:'All BCC subtypes on Area H.',action:'Consider referral to Mohs surgery.'};
+    if(area==='M'){
+      if(pr==='recurrent')return{res:'ok',note:'Recurrent BCC on Area M.',action:'Consider referral to Mohs surgery.'};
+      if(ag||no)return{res:'ok',note:'Primary aggressive or nodular BCC on Area M.',action:'Consider referral to Mohs surgery.'};
+      if(su&&d>=0.6)return{res:'ok',note:'Primary superficial BCC ≥0.6 cm on Area M.',action:'Consider referral to Mohs surgery.'};
+      if(su&&d<0.6)return{res:'unc',note:'Primary superficial BCC ≤0.5 cm on Area M.',action:'Clinical judgment required.'};
+      return{res:'unc',note:'Primary BCC on Area M — specify subtype to confirm.',action:'Specify subtype for definitive AUC.'};
+    }
+    if(pr==='recurrent'){
+      if(su)return{res:'no',note:'Recurrent superficial BCC on Area L.',action:'Standard excision preferred.'};
+      if(no&&d<=1.0)return{res:'no',note:'Recurrent nodular BCC ≤1 cm on Area L.',action:'Standard excision preferred.'};
+      if(ag||(no&&d>1.0))return{res:'ok',note:'Recurrent aggressive/large nodular BCC on Area L.',action:'Consider referral to Mohs surgery.'};
+      return{res:'unc',note:'Recurrent BCC on Area L — specify subtype.',action:'Clinical judgment required.'};
+    }
+    if(ag&&d>=0.6)return{res:'ok',note:'Primary aggressive BCC ≥0.6 cm on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(no&&d>2.0)return{res:'ok',note:'Primary nodular BCC >2 cm on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(no&&d>=1.1&&d<=2.0)return{res:'unc',note:'Primary nodular BCC 1.1–2 cm on Area L.',action:'Clinical judgment required.'};
+    if(isIC&&no&&d>=0.6&&d<=1.0)return{res:'unc',note:'Primary nodular BCC (IC) 0.6–1 cm on Area L.',action:'Clinical judgment required.'};
+    if(isIC&&su&&d>=1.1)return{res:'unc',note:'Primary superficial BCC (IC) ≥1.1 cm on Area L.',action:'Clinical judgment required.'};
+    if(ag&&d<=0.5)return{res:'unc',note:'Primary aggressive BCC ≤0.5 cm on Area L.',action:'Clinical judgment required.'};
+    if((no&&d<=1.0)||su)return{res:'no',note:'Primary nodular/superficial BCC ≤1 cm on Area L.',action:'Standard excision preferred.'};
+    return{res:'unc',note:'Primary BCC on Area L — specify subtype and size.',action:'Clinical judgment required.'};
+  }
+  if(dt==='SCC'){
+    var ag2=s==='scc_aggressive',na=s==='scc_nonaggressive',ka=s==='scc_katype',sc=s==='scc_sccis_bowen',ak=s==='scc_ak_focal_sccis';
+    if(area==='H'){if(ak)return{res:'unc',note:'AK with focal SCCIS on Area H.',action:'Clinical judgment required.'};return{res:'ok',note:'SCC on Area H.',action:'Consider referral to Mohs surgery.'};}
+    if(area==='M'){if(ak)return{res:'unc',note:'AK with focal SCCIS on Area M.',action:'Clinical judgment required.'};return{res:'ok',note:'SCC on Area M.',action:'Consider referral to Mohs surgery.'};}
+    if(pr==='recurrent'){
+      if(ak)return{res:'no',note:'Recurrent AK with focal SCCIS on Area L.',action:'Standard excision preferred.'};
+      if(ag2||ka)return{res:'ok',note:'Recurrent aggressive or KA-type SCC on Area L.',action:'Consider referral to Mohs surgery.'};
+      if(na)return{res:'ok',note:'Recurrent nonaggressive SCC on Area L.',action:'Consider referral to Mohs surgery.'};
+      if(sc)return{res:'unc',note:'Recurrent SCCIS/Bowen on Area L.',action:'Clinical judgment required.'};
+      return{res:'unc',note:'Recurrent SCC on Area L — specify subtype.',action:'Clinical judgment required.'};
+    }
+    if(ag2)return{res:'ok',note:'Primary aggressive SCC on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(ka&&d>=0.6)return{res:'ok',note:'Primary KA-type SCC ≥0.6 cm on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(na&&d>2.0)return{res:'ok',note:'Primary nonaggressive SCC >2 cm on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(sc&&d>2.0)return{res:'ok',note:'Primary SCCIS/Bowen >2 cm on Area L.',action:'Consider referral to Mohs surgery.'};
+    if(na&&d>=1.1&&d<=2.0)return{res:'unc',note:'Primary nonaggressive SCC 1.1–2 cm on Area L.',action:'Clinical judgment required.'};
+    if(sc&&d>=1.1&&d<=2.0)return{res:'unc',note:'Primary SCCIS/Bowen 1.1–2 cm on Area L.',action:'Clinical judgment required.'};
+    if(isIC&&na&&d>=1.0)return{res:'unc',note:'Primary nonaggressive SCC (IC) ≥1 cm on Area L.',action:'Clinical judgment required.'};
+    if(isIC&&sc&&d>=0.6)return{res:'unc',note:'Primary SCCIS/Bowen (IC) ≥0.6 cm on Area L.',action:'Clinical judgment required.'};
+    if(isIC&&ka&&d>=0.6)return{res:'unc',note:'Primary KA-type SCC (IC) ≥0.6 cm on Area L.',action:'Clinical judgment required.'};
+    if(ak)return{res:'no',note:'Primary AK with focal SCCIS on Area L.',action:'Standard excision preferred.'};
+    if((na&&d<=1.0)||(sc&&d<=1.0))return{res:'no',note:'Primary nonaggressive SCC or SCCIS ≤1 cm on Area L.',action:'Standard excision preferred.'};
+    return{res:'unc',note:'Primary SCC on Area L — specify subtype.',action:'Clinical judgment required.'};
+  }
+  return{res:'unk',note:'Cannot determine Mohs AUC for this diagnosis.',action:''};
+}
+
+// ── margin ─────────────────────────────────────────────────────────────────
+function getMarginG(dt,sub,pr,area,diam,em){
+  var d=parseFloat(diam),e=parseFloat(em),s=sub||'';
+  if(dt==='BCC'){
+    var mc=s==='bcc_aggressive'||pr==='recurrent'||area==='H'||area==='M';
+    if(mc)return{rec:'N/A — Mohs preferred',flag:'na',note:'Margin determined intraoperatively with Mohs surgery. Standard excision margins not applicable for this presentation.',src:'NCCN Guidelines'};
+    return{rec:'4 mm (0.4 cm)',flag:e<0.4?'low':'ok',note:e<0.4?'Entered margin is below the 4mm guideline recommendation. Brodland & Zitelli (JAAD 1992) demonstrated 4mm margins achieve >95% clearance for low-risk BCC.':'4mm margins achieve >95% clearance for low-risk BCC (Brodland & Zitelli, JAAD 1992; NCCN Guidelines).',src:'Brodland & Zitelli, JAAD 1992; NCCN BCC Guidelines'};
+  }
+  if(dt==='SCC'){
+    if(area==='H'||area==='M')return{rec:'N/A — Mohs preferred',flag:'na',note:'Margin determined intraoperatively with Mohs surgery for SCC on Area H or M.',src:'NCCN Guidelines'};
+    var hi=s==='scc_aggressive'||d>=2.0||pr==='recurrent';
+    if(hi)return{rec:'6 mm (0.6 cm)',flag:e<0.6?'low':'ok',note:e<0.6?'Entered margin is below the 6mm recommendation for high-risk SCC (Brodland & Zitelli, JAAD 1992).':'6mm margins recommended for high-risk SCC (Brodland & Zitelli, JAAD 1992; NCCN SCC Guidelines).',src:'Brodland & Zitelli, JAAD 1992; NCCN SCC Guidelines'};
+    return{rec:'4–6 mm (0.4–0.6 cm)',flag:e<0.4?'low':'ok',note:e<0.4?'Entered margin appears below the 4–6mm recommendation for low-risk SCC.':'4mm for low-risk SCC; 6mm for high-risk features (Brodland & Zitelli, JAAD 1992; NCCN SCC Guidelines).',src:'Brodland & Zitelli, JAAD 1992; NCCN SCC Guidelines'};
+  }
+  if(dt==='LM_MIS'){
+    var isLM=s==='lm'||s==='';
+    if(isLM)return{rec:'9–10 mm for LM; 5 mm for non-LM MIS',flag:e<0.5?'low':e<0.9?'inf':'ok',note:e<0.5?'Entered margin is below even the minimum recommendation. 5mm margins are inadequate for lentigo maligna in 20–50% of cases. Mohs or staged excision with en face margin assessment is strongly preferred (Hazan et al., JAAD 2021).':e<0.9?'For lentigo maligna, 5mm margins are inadequate in 20–50% of cases. 9–10mm margins have been proposed (Hazan et al., JAAD 2021). Mohs or staged excision is strongly preferred.':'Margin appears adequate. For lentigo maligna, Mohs or staged excision with en face margin assessment is preferred regardless of margin width.',src:'NCCN Guidelines; Hazan et al., JAAD 2021; Johnson et al., Dermatol Surg 2020'};
+    return{rec:'5 mm (0.5 cm)',flag:e<0.5?'low':'ok',note:e<0.5?'Entered margin is below the 5mm NCCN recommendation for non-LM melanoma in situ.':'5mm margins per NCCN for non-LM melanoma in situ.',src:'NCCN Melanoma Guidelines'};
+  }
+  if(dt==='MELANOMA_INV')return{rec:'1cm (≤1mm Breslow) · 1–2cm (1–2mm) · 2cm (>2mm)',flag:'inf',note:'Margin is determined by Breslow thickness, not yet available at consultation. Tiers: ≤1.0mm→1cm; 1.01–2.0mm→1–2cm; >2.0mm→2cm.',src:'NCCN Melanoma Guidelines; WHO Melanoma Program RCTs'};
+  if(dt==='DFSP')return{rec:'2–3 cm if standard excision; Mohs preferred',flag:e<2.0?'low':'ok',note:e<2.0?'Standard excision of DFSP requires 2–3cm margins; narrower margins yield up to 50% recurrence. Mohs reduces recurrence to <2% (Gloster, JAAD 1996).':'Standard excision requires 2–3cm margins; Mohs is preferred (Gloster, JAAD 1996).',src:'Gloster, JAAD 1996; NCCN Soft Tissue Sarcoma Guidelines'};
+  if(dt==='MCC')return{rec:'1–2 cm',flag:e<1.0?'low':'ok',note:'NCCN recommends 1–2cm margins for MCC. Mohs with complete margin assessment is preferred.',src:'NCCN MCC Guidelines'};
+  var litSet=['MAC','AFX','EMPD','SEBACEOUS_CA','LEIOMYOSARCOMA','SPINDLE_CELL','ECCRINE_APOCRINE','TRICHILEMMAL','MUCINOUS_CA'];
+  for(var i=0;i<litSet.length;i++)if(dt===litSet[i])return{rec:'1–2 cm if standard excision; Mohs preferred',flag:'na',note:'Mohs surgery is preferred; margin determined intraoperatively. If standard excision is performed, 1–2cm margins are generally recommended.',src:'Literature-supported; see diagnosis-specific references'};
+  return{rec:'1–3 mm typical',flag:'na',note:'Standard margins for benign lesions vary by type; no strict guideline threshold applies.',src:''};
+}
+
+// ── SLNB ───────────────────────────────────────────────────────────────────
+function getSLNB(dt,sub,diam){
+  var d=parseFloat(diam),s=sub||'';
+  if(dt==='MELANOMA_INV')return{lvl:'req',title:'SLNB — discuss at consultation',note:'SLNB is standard of care for melanoma ≥0.8mm Breslow thickness (NCCN Category 1). Breslow thickness not yet available at consultation — document that SLNB eligibility will be determined based on final pathology.',src:'Morton et al., NEJM 2006 (MSLT-I); Faries et al., NEJM 2017 (MSLT-II); NCCN Melanoma Guidelines'};
+  if(dt==='MCC')return{lvl:'req',title:'SLNB — recommended for all clinically N0 MCC',note:'SLNB recommended by NCCN (Category 2A) for all clinically node-negative MCC at any size. Occult nodal disease found in 26–36% of clinically N0 patients.',src:'Gupta et al., JAAD 2006; Allen et al., Ann Surg Oncol 2005; NCCN MCC Guidelines'};
+  if(dt==='SCC'&&(s==='scc_aggressive'||d>=4.0))return{lvl:'con',title:'SLNB — consider for high-risk SCC',note:'SLNB may be considered (NCCN Category 2B) for high-risk SCC with diameter >4cm, perineural invasion, or poorly differentiated histology. Pooled sentinel node positivity ~14% in high-risk SCC.',src:'Navarrete-Dechent et al., JAAD 2019; NCCN SCC Guidelines'};
+  if(dt==='DFSP')return{lvl:'ni',title:'SLNB — not routinely indicated for conventional DFSP',note:'Metastatic rate <5% for conventional DFSP; SLNB not routinely recommended. If fibrosarcomatous transformation suspected, nodal staging may be appropriate.',src:'Gloster, JAAD 1996; NCCN Soft Tissue Sarcoma Guidelines'};
+  var mdt=['MAC','LEIOMYOSARCOMA','ECCRINE_APOCRINE','SEBACEOUS_CA','MUCINOUS_CA'];
+  for(var i=0;i<mdt.length;i++)if(dt===mdt[i])return{lvl:'con',title:'SLNB — discuss in multidisciplinary context',note:'Regional metastasis rates are low but non-negligible. Nodal staging should be discussed in a multidisciplinary setting.',src:'Tumor-specific case series; multidisciplinary consensus'};
+  return null;
+}
+
+// ── render ─────────────────────────────────────────────────────────────────
+function render(r){
+  var isLit=r.mohs.res==='lit';
+  var bMap={ok:'b-ok',unc:'b-unc',no:'b-no',lit:'b-lit',unk:'b-unk'};
+  var lMap={ok:'✓ APPROPRIATE FOR MOHS (AUC)',unc:'~ UNCERTAIN FOR MOHS (AUC)',no:'✗ INAPPROPRIATE FOR MOHS (AUC)',lit:'★ MOHS PREFERRED — LITERATURE SUPPORTED',unk:'— MOHS AUC NOT APPLICABLE'};
+  var showM=r.mohs.res==='ok'||r.mohs.res==='unc'||r.mohs.res==='lit';
+
+  var iSu=r.repair.intUp?'<span class="cpt-su">↑ step-up: '+r.repair.intUp.c+'</span>':'';
+  var cSu=r.repair.cxUp?'<span class="cpt-su">↑ step-up: '+r.repair.cxUp.c+'</span>':'';
+
+  var mohsCptHtml=showM?'<hr class="sec-div"><div class="sub-lbl">Mohs CPT codes (if referred)</div><div class="cpt-grid" style="line-height:1.8"><div class="cpt-row"><span class="cpt-lbl">Mohs first stage:</span><span class="cpt-val">'+r.mohsCPT.first.c+'</span></div><div class="cpt-row"><span class="cpt-lbl">Each additional stage (add-on):</span><span class="cpt-val">'+r.mohsCPT.addon.c+'</span></div></div>':'';
+  var legM=showM?'<tr><td>'+r.mohsCPT.first.c+'</td><td>'+r.mohsCPT.first.d+'</td></tr><tr><td>'+r.mohsCPT.addon.c+'</td><td>'+r.mohsCPT.addon.d+'</td></tr>':'';
+  var legIU=r.repair.intUp?'<tr><td>'+r.repair.intUp.c+'</td><td><em>Step-up intermediate:</em> '+r.repair.intUp.d+'</td></tr>':'';
+  var legCU=r.repair.cxUp?'<tr><td>'+r.repair.cxUp.c+'</td><td><em>Step-up complex:</em> '+r.repair.cxUp.d+'</td></tr>':'';
+
+  var flM={ok:'fl-ok',low:'fl-low',inf:'fl-inf'};
+  var flL={ok:'WITHIN GUIDELINES',low:'BELOW GUIDELINE',inf:'NOTE'};
+  var mFlag=r.marginG.flag!=='na'?'<span class="fl '+flM[r.marginG.flag]+'">'+flL[r.marginG.flag]+'</span>':'';
+
+  var slHtml='';
+  if(r.slnb){var sMap={req:'sl-req',con:'sl-con',ni:'sl-ni'};slHtml='<div class="slnb '+sMap[r.slnb.lvl]+'"><div class="sl-ttl">'+r.slnb.title+'</div><div>'+r.slnb.note+'</div><div class="sl-src">Source: '+r.slnb.src+'</div></div>';}
+
+  var mohsBody='<div class="badge '+bMap[r.mohs.res]+'">'+lMap[r.mohs.res]+'</div>'
+    +'<div class="mohs-note">'+r.mohs.note+'</div>'
+    +(r.mohs.action&&!isLit?'<div class="mohs-action">'+r.mohs.action+'</div>':'')
+    +(isLit?'<div class="lit-box">Not in the AAD/AUC table — Mohs surgery is the preferred treatment based on current literature. '+r.mohs.action+'</div>':'')
+    +(!isLit&&r.mohs.res!=='unk'?'<div class="mohs-loc">Location: <strong>'+r.areaLbl+'</strong> · '+(r.mal?'Malignant':'Benign')+'</div>':'')
+    +slHtml;
+
+  var html=
+    '<div class="results-hdr"><span>Billing Estimate</span><button class="new-btn" id="reset-btn">← New case</button></div>'
+    +'<div class="card"><div class="card-hdr">CPT / ICD-10 Codes</div><div class="card-body">'
+    +'<div class="cpt-grid">'
+    +'<div class="cpt-row"><span class="cpt-lbl">ICD-10 diagnosis code:</span><span class="cpt-val">'+r.icd10.c+'</span></div>'
+    +'<div class="cpt-row"><span class="cpt-lbl">Excision length:</span><span class="cpt-val">'+r.excisionSize.toFixed(1)+' cm</span></div>'
+    +'<div class="cpt-row"><span class="cpt-lbl">Repair length:</span><span class="cpt-val">'+r.repairLength.toFixed(1)+' cm</span></div>'
+    +'<hr class="cpt-div">'
+    +'<div class="cpt-row"><span class="cpt-lbl">Excision + intermediate repair:</span><span class="cpt-val">'+r.excision.c+', '+r.repair.int.c+'</span>'+iSu+'</div>'
+    +'<div class="cpt-row"><span class="cpt-lbl">Excision + complex repair:</span><span class="cpt-val">'+r.excision.c+', '+r.repair.cx.c+'</span>'+cSu+'</div>'
+    +'<div class="cpt-row"><span class="cpt-lbl">Destruction (ED&amp;C):</span><span class="cpt-val">'+r.dest.c+'</span></div>'
+    +'</div>'+mohsCptHtml+'</div></div>'
+    +'<div class="card"><div class="card-hdr">Code Descriptions</div><div class="card-body">'
+    +'<table class="leg">'
+    +'<tr><td>'+r.icd10.c+'</td><td>'+r.icd10.d+'</td></tr>'
+    +'<tr><td>'+r.excision.c+'</td><td>'+r.excision.d+'</td></tr>'
+    +'<tr><td>'+r.repair.int.c+'</td><td>'+r.repair.int.d+'</td></tr>'+legIU
+    +'<tr><td>'+r.repair.cx.c+'</td><td>'+r.repair.cx.d+'</td></tr>'+legCU
+    +'<tr><td>'+r.dest.c+'</td><td>'+r.dest.d+'</td></tr>'+legM
+    +'</table>'
+    +(r.repair.intUp||r.repair.cxUp?'<p class="note-txt">Step-up codes shown if repair is larger than anticipated.</p>':'')
+    +'<p class="note-txt" style="margin-top:6px">Verify all codes before billing. ICD-10 codes are approximate — confirm specificity per documentation.</p>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-hdr">Mohs AUC Assessment</div><div class="card-body">'+mohsBody+'</div></div>'
+    +'<div class="card"><div class="card-hdr">Margin Guidance</div><div class="card-body">'
+    +'<div class="m-row"><span class="m-lbl">Entered margin:</span><span class="m-val">'+r.margin+' cm</span>'+mFlag+'</div>'
+    +'<div class="m-row"><span class="m-lbl">Guideline recommendation:</span><span class="m-val">'+r.marginG.rec+'</span></div>'
+    +'<p class="m-note">'+r.marginG.note+'</p>'
+    +(r.marginG.src?'<p class="m-src">Source: '+r.marginG.src+'</p>':'')
+    +'</div></div>';
+
+  document.getElementById('form-section').style.display='none';
+  var out=document.getElementById('out');
+  out.innerHTML=html;
+  out.style.display='block';
+  document.getElementById('reset-btn').addEventListener('click',doReset);
+}
+
+})();
+</script>
+</body>
+</html>
