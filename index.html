@@ -256,12 +256,14 @@ input:focus,select:focus{border-color:var(--text);}
 .amc-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
 .amc-label{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.09em;
   text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.sc-row{cursor:pointer;align-items:center;}
+.sc-row input{margin:0 8px 0 0;}
 </style>
 </head>
 <body>
 <div class="top-banner">
   <span class="tb-author">A. Pulavarty</span>
-  <span class="tb-meta">v1.20 &nbsp;&middot;&nbsp; Last updated: July 15, 2026</span>
+  <span class="tb-meta">v1.21 &nbsp;&middot;&nbsp; Last updated: October 4, 2026</span>
 </div>
 <div class="page">
 <div class="masthead">
@@ -291,11 +293,25 @@ input:focus,select:focus{border-color:var(--text);}
         Dermatology Resident, NYU Langone Health</p>
         <p>This tool was built to assist dermatology residents and surgical team members with pre-operative CPT code estimation for common dermatologic surgical procedures.</p>
         <p>Code outputs are estimates only and should be verified against current CPT guidelines and institutional billing compliance policies before submission. The tool does not constitute legal, financial, or medical advice.</p>
+        <p>CPT codes were cross-referenced against, and verified with, the CPT 2027 Professional Edition (American Medical Association). Codes follow CPT and Medicare NCCI conventions (2026) and are reviewed each year when CPT is updated. Outputs are preoperative estimates: confirm each code against the procedure performed and documented. Payer and MAC policies vary and are not modeled.</p>
         <p>For questions or feedback, contact: <a href="mailto:akshaynvp@gmail.com">akshaynvp@gmail.com</a></p>
       </div>
       <!-- Change Log panel -->
       <div id="mpanel-changelog" style="display:none">
         <h3>Change Log</h3>
+        <div class="cl-entry">
+          <span class="cl-ver">v1.21</span><span class="cl-date">October 4, 2026</span>
+          <ul class="cl-items">
+            <li>CPT tables rewritten as explicit code lists. Removed nonexistent codes 11405/11425/11445, 11605/11625/11645 and 17265/17275/17285; lesions over 4.0 cm now map to the x6 codes.</li>
+            <li>Anatomic groups now follow CPT descriptors rather than the AUC area. Forehead, cheek and chin use the face series; ankle uses 12031; complex repair uses the 13100, 13120, 13131 or 13151 family by site.</li>
+            <li>Complex repair over 7.5 cm now lists the primary code plus add-on units; no complex code is offered below 1.1 cm (13150 is not in CPT 2027 and was removed). Same add-on logic for grafts and flaps; 15220, 14020/14021 and 14301/14302 added.</li>
+            <li>Benign excisions of 0.5 cm or less no longer list repair codes (NCCI).</li>
+            <li>Copy Codes now copies one billing alternative at a time; excision, repair and destruction are no longer combined.</li>
+            <li>Skin tag removal now uses 11200/11201. ICD-10: corrected eyelid codes; added lip codes for melanoma and MIS; SK and skin tag codes.</li>
+            <li>Pathology levels now follow the CPT specimen list: cyst, tag and lipoma 88304; nevus, SK, DF and skin cancers 88305; DFSP and leiomyosarcoma 88307.</li>
+            <li>All CPT codes cross-referenced against the CPT 2027 Professional Edition (AMA).</li>
+          </ul>
+        </div>
         <div class="cl-entry">
           <span class="cl-ver">v1.20</span><span class="cl-date">July 15, 2026</span>
           <ul class="cl-items">
@@ -1151,6 +1167,7 @@ document.getElementById('go-btn').addEventListener('click',function(){
   var area=loc.area;
   var areaLbl=area==='H'?'Area H (high-risk)':area==='M'?'Area M (medium-risk)':'Area L (low-risk)';
 
+  var cg=cptGroups(loc);
   // ── Combinatorial validation ──────────────────────────────────────────
   // Flag unusual combinations that might indicate input error
   var warnings=[];
@@ -1175,19 +1192,20 @@ document.getElementById('go-btn').addEventListener('click',function(){
     subtype:subtype,pr:pr,ic:ic,warnings:warnings,
     excisionSize:excisionSize,repairLength:repairLength,
     diagType:diagType,mal:mal,area:area,areaLbl:areaLbl,
-    icd10:getICD10(diagType,loc,lat),
-    excision:getExcision(mal,area,excisionSize),
-    repair:getRepair(area,loc.rg,repairLength),
-    dest:getDest(mal,area,diameter),
+    icd10:getICD10(diagType,loc,lat,subtype),
+    cpt:cg,
+    excision:getExcision(mal,cg,excisionSize),
+    repair:getRepair(cg,repairLength),
+    dest:getDest(mal,cg,diameter),
     mohs:getMohs(diagType,subtype,pr,area,diameter,ic),
     melBreslow:(diagType==='MELANOMA_INV'?parseFloat(document.getElementById('mel-breslow').value):NaN),
     melUlc:(diagType==='MELANOMA_INV'?(document.getElementById('mel-ulc').value||'absent'):'absent'),
     melTransected:(diagType==='MELANOMA_INV'&&document.getElementById('mel-transected')&&document.getElementById('mel-transected').checked),
-    mohsCPT:getMohsCPT(area),
+    mohsCPT:getMohsCPT(cg),
     marginG:getMarginG(diagType,subtype,pr,area,diameter,margin,r2(isNaN(parseFloat(document.getElementById('mel-breslow').value))?0:parseFloat(document.getElementById('mel-breslow').value))),
     slnb:getSLNB(diagType,subtype,diameter),
-    pathCPT:  getPathCPT(diagType),
-    graftFlap:getGraftFlap(area,excisionSize)
+    pathCPT:  getPathCPT(diagType,subtype),
+    graftFlap:getGraftFlap(cg,excisionSize)
   });
 });
 
@@ -1258,7 +1276,7 @@ var LIT={
 };
 
 // ── ICD-10 ────────────────────────────────────────────────────────────────
-function getICD10(dt,loc,lat){
+function getICD10(dt,loc,lat,subtype){
   var area=loc.area, rg=loc.rg, sub=loc.sub||'';
   lat = lat||'U';
   // ICD-10-CM laterality: 1=unspecified, 2=right, 9=left (all categories)
@@ -1281,7 +1299,7 @@ function getICD10(dt,loc,lat){
   // ── BCC (C44) ────────────────────────────────────────────────────────
   if(dt==='BCC'){
     if(area==='H'){
-      if(isEyelid) return{c:'C44.11'+ls, d:'BCC of skin of eyelid, including canthus'+latSuffix};
+      if(isEyelid) return eyelidICD(loc,lat,EYE_BCC);
       if(isEar)    return{c:'C44.21'+ls, d:'BCC of skin of ear and external auricular canal'+latSuffix};
       if(isNose)   return{c:'C44.311',   d:'BCC of skin of nose'};
       if(isLip)    return{c:'C44.01',    d:'BCC of skin of lip'};
@@ -1303,7 +1321,7 @@ function getICD10(dt,loc,lat){
   // ── SCC (C44) ────────────────────────────────────────────────────────
   if(dt==='SCC'){
     if(area==='H'){
-      if(isEyelid) return{c:'C44.12'+ls, d:'SCC of skin of eyelid, including canthus'+latSuffix};
+      if(isEyelid) return eyelidICD(loc,lat,EYE_SCC);
       if(isEar)    return{c:'C44.22'+ls, d:'SCC of skin of ear and external auricular canal'+latSuffix};
       if(isNose)   return{c:'C44.321',   d:'SCC of skin of nose'};
       if(isLip)    return{c:'C44.02',    d:'SCC of skin of lip'};
@@ -1325,8 +1343,9 @@ function getICD10(dt,loc,lat){
   // ── LM / MIS (D03) ───────────────────────────────────────────────────
   if(dt==='LM_MIS'){
     if(area==='H'){
-      if(isEyelid) return{c:'D03.1'+ls2, d:'Melanoma in situ of eyelid, including canthus'+latSuffix};
+      if(isEyelid) return eyelidICD(loc,lat,EYE_MIS);
       if(isEar)    return{c:'D03.2'+ls2, d:'Melanoma in situ of ear and external auricular canal'+latSuffix};
+      if(isLip)    return{c:'D03.0',     d:'Melanoma in situ of lip'};
       if(isNose)   return{c:'D03.39',    d:'Melanoma in situ of other parts of face (nose)'};
       return{c:'D03.39', d:'Melanoma in situ of other parts of face'};
     }
@@ -1346,8 +1365,9 @@ function getICD10(dt,loc,lat){
   // ── Invasive melanoma (C43) ───────────────────────────────────────────
   if(dt==='MELANOMA_INV'){
     if(area==='H'){
-      if(isEyelid) return{c:'C43.1'+ls2, d:'Malignant melanoma of eyelid, including canthus'+latSuffix};
+      if(isEyelid) return eyelidICD(loc,lat,EYE_MEL);
       if(isEar)    return{c:'C43.2'+ls2, d:'Malignant melanoma of ear and external auricular canal'+latSuffix};
+      if(isLip)    return{c:'C43.0',     d:'Malignant melanoma of lip'};
       if(isNose)   return{c:'C43.31',    d:'Malignant melanoma of nose'};
       return{c:'C43.39', d:'Malignant melanoma of other parts of face'};
     }
@@ -1378,79 +1398,234 @@ function getICD10(dt,loc,lat){
   if(dt==='MUCINOUS_CA')return{c:'C44.99',d:'Mucinous carcinoma of skin — verify site-specific code'};
   if(dt==='OTHER_MAL')return{c:'C44.99',d:'Other malignant neoplasm of skin — verify specific ICD-10 code'};
   if(dt==='DN_MODERATE'||dt==='DN_SEVERE')return{c:'D48.5',d:'Neoplasm of uncertain behavior of skin (dysplastic nevus)'};
+  if(dt==='BENIGN'&&subtype==='sk')return{c:'L82.1',d:'Other seborrheic keratosis'};
+  if(dt==='BENIGN'&&subtype==='tag')return{c:'L91.8',d:'Other hypertrophic disorders of skin (acrochordon / skin tag)'};
   if(dt==='OTHER_BENIGN')return{c:'L98.9',d:'Other disorder of skin — verify specific ICD-10 code'};
   return{c:'L98.9',d:'Disorder of skin, unspecified (benign — specify)'};
 }
 
 // ── Excision CPT ──────────────────────────────────────────────────────────
-function getExcision(mal,area,size){
-  var base=mal?(area==='H'?11640:area==='M'?11620:11600):(area==='H'?11440:area==='M'?11420:11400);
-  var grp=area==='H'?'face/ears/eyelids/nose/lips':area==='M'?'scalp/neck/hands/feet':'trunk/extremities';
-  var off,sd;
-  if(size<=0.5){off=0;sd='≤0.5 cm';}
-  else if(size<=1.0){off=1;sd='0.6–1.0 cm';}
-  else if(size<=2.0){off=2;sd='1.1–2.0 cm';}
-  else if(size<=3.0){off=3;sd='2.1–3.0 cm';}
-  else if(size<=4.0){off=4;sd='3.1–4.0 cm';}
-  else if(size<=5.0){off=5;sd='4.1–5.0 cm';}
-  else{off=6;sd='>5.0 cm';}
-  return{c:String(base+off),d:'Excision, '+(mal?'malignant':'benign')+' lesion, '+grp+', '+sd};
+// ===CPT_TABLES_START===
+// CPT code tables (v1.21). Every code is listed explicitly; none is computed by arithmetic.
+// Cross-referenced against the CPT 2027 Professional Edition (AMA), Integumentary System (printed pp. 81-113): every code, anatomic group, size band and add-on status.
+// CPT has no x5 code in the 11400/11420/11440, 11600/11620/11640 or 17260/17270/17280 series (the last code is x6, ">4.0 cm").
+// Anatomic groups follow CPT descriptors, not the AUC Area (H/M/L):
+//   x = excision / shave / destruction : F face, ears, eyelids, nose, lips | S scalp, neck, hands, feet, genitalia | T trunk, arms, legs
+//   i = intermediate repair            : F 12051 series | N 12041 series (neck, hands, feet, external genitalia) | T 12031 series (scalp, axillae, trunk, extremities)
+//   c = complex repair, flaps, grafts  : T trunk | L scalp, arms, legs | M forehead, cheeks, chin, mouth, neck, axillae, genitalia, hands, feet | E eyelids, nose, ears, lips
+var CPT_VALID=(function(){
+  var s='11200 11201 11300 11301 11302 11303 11305 11306 11307 11308 11310 11311 11312 11313 '
+   +'11400 11401 11402 11403 11404 11406 11420 11421 11422 11423 11424 11426 11440 11441 11442 11443 11444 11446 '
+   +'11600 11601 11602 11603 11604 11606 11620 11621 11622 11623 11624 11626 11640 11641 11642 11643 11644 11646 '
+   +'12031 12032 12034 12035 12036 12037 12041 12042 12044 12045 12046 12047 12051 12052 12053 12054 12055 12056 12057 '
+   +'13100 13101 13102 13120 13121 13122 13131 13132 13133 13151 13152 13153 '
+   +'14000 14001 14020 14021 14040 14041 14060 14061 14301 14302 '
+   +'15200 15201 15220 15221 15240 15241 15260 15261 '
+   +'17000 17003 17004 17110 17111 '
+   +'17260 17261 17262 17263 17264 17266 17270 17271 17272 17273 17274 17276 17280 17281 17282 17283 17284 17286 '
+   +'17311 17312 17313 17314 17315 88304 88305 88307 88341 88342';
+  var o={}; s.split(' ').forEach(function(k){ if(k) o[k]=1; }); return o;
+})();
+function V(c){ if(CPT_VALID[c]) return c; if(window.console) console.error('Invalid CPT code blocked: '+c); return 'CHECK'; }
+function r1(x){ return Math.round(x*10)/10; }
+function band(lims,v){ for(var i=0;i<lims.length;i++){ if(v<=lims[i]) return i; } return lims.length-1; }
+function un(c,n){ return n>1 ? c+' x'+n : c; }
+
+var CPT_LOC={
+  'scalp_vertex':{x:'S',i:'T',c:'L'},
+  'scalp_frontal':{x:'S',i:'T',c:'L'},
+  'scalp_parietal':{x:'S',i:'T',c:'L'},
+  'scalp_occipital':{x:'S',i:'T',c:'L'},
+  'scalp_temporal':{x:'S',i:'T',c:'L'},
+  'forehead_central':{x:'F',i:'F',c:'M'},
+  'forehead_lateral':{x:'F',i:'F',c:'M'},
+  'temple':{x:'F',i:'F',c:'M',n:"Temple is not named in CPT. Complex repair is coded with the forehead/cheek group (13131–13133). Confirm with your coding team."},
+  'upper_eyelid':{x:'F',i:'F',c:'E'},
+  'lower_eyelid':{x:'F',i:'F',c:'E'},
+  'medial_canthus':{x:'F',i:'F',c:'E'},
+  'lateral_canthus':{x:'F',i:'F',c:'E'},
+  'periorbital':{x:'F',i:'F',c:'E',n:"Periorbital skin is not named in CPT. Complex repair is coded with the eyelid group (13151–13153); use 13131–13133 if the repair is on the cheek."},
+  'nose_tip':{x:'F',i:'F',c:'E'},
+  'nose_ala':{x:'F',i:'F',c:'E'},
+  'nose_dorsum':{x:'F',i:'F',c:'E'},
+  'nose_sidewall':{x:'F',i:'F',c:'E'},
+  'nose_columella':{x:'F',i:'F',c:'E'},
+  'nasal_sill':{x:'F',i:'F',c:'E'},
+  'cheek':{x:'F',i:'F',c:'M'},
+  'nasolabial_fold':{x:'F',i:'F',c:'M',n:"Nasolabial fold is not named in CPT. Complex repair is coded with the cheek group (13131–13133). Confirm with your coding team."},
+  'perioral':{x:'F',i:'F',c:'M',n:"Perioral skin is not named in CPT. Complex repair is coded with the mouth/cheek group (13131–13133); use 13151–13153 if the repair is on the lip itself."},
+  'upper_lip':{x:'F',i:'F',c:'E'},
+  'lower_lip':{x:'F',i:'F',c:'E'},
+  'philtrum':{x:'F',i:'F',c:'E'},
+  'commissure':{x:'F',i:'F',c:'E',n:"Lip commissure is not named in CPT. Complex repair is coded with the lip group (13151–13153); use 13131–13133 if the repair is on the mouth/cheek."},
+  'chin':{x:'F',i:'F',c:'M'},
+  'jawline':{x:'F',i:'F',c:'M',n:"Jawline is not named in CPT. It is coded with the face series for excision, shave and destruction and with the cheek/chin group (13131–13133) for complex repair. Confirm with your coding team."},
+  'helix':{x:'F',i:'F',c:'E'},
+  'antihelix':{x:'F',i:'F',c:'E'},
+  'concha':{x:'F',i:'F',c:'E'},
+  'tragus':{x:'F',i:'F',c:'E'},
+  'lobule':{x:'F',i:'F',c:'E'},
+  'preauricular':{x:'F',i:'F',c:'M',n:"Preauricular skin is not named in CPT. Complex repair is coded with the cheek group (13131–13133); use 13151–13153 if the repair involves the ear."},
+  'postauricular':{x:'F',i:'F',c:'E',n:"Postauricular skin is not named in CPT. Complex repair is coded with the ear group (13151–13153); neck or scalp codes may apply if the repair is off the ear."},
+  'anterior_neck':{x:'S',i:'N',c:'M'},
+  'posterior_neck':{x:'S',i:'N',c:'M'},
+  'lateral_neck':{x:'S',i:'N',c:'M'},
+  'chest':{x:'T',i:'T',c:'T'},
+  'abdomen':{x:'T',i:'T',c:'T'},
+  'back_upper':{x:'T',i:'T',c:'T'},
+  'back_lower':{x:'T',i:'T',c:'T'},
+  'flank':{x:'T',i:'T',c:'T'},
+  'buttock':{x:'T',i:'T',c:'T'},
+  'shoulder':{x:'T',i:'T',c:'L',n:"Shoulder is not named in CPT. Complex repair is coded with the arm group (13120–13122); use 13100–13102 if the repair is on the trunk."},
+  'axilla':{x:'T',i:'T',c:'M',n:"Axilla is named for repair (13131–13133) but not for excision, which is coded with trunk/arms/legs. Confirm with your coding team."},
+  'upper_arm':{x:'T',i:'T',c:'L'},
+  'forearm':{x:'T',i:'T',c:'L'},
+  'elbow':{x:'T',i:'T',c:'L'},
+  'wrist':{x:'T',i:'T',c:'L'},
+  'dorsal_hand':{x:'S',i:'N',c:'M'},
+  'palmar_hand':{x:'S',i:'N',c:'M'},
+  'finger':{x:'S',i:'N',c:'M'},
+  'thigh':{x:'T',i:'T',c:'L'},
+  'knee':{x:'T',i:'T',c:'L'},
+  'lower_leg':{x:'T',i:'T',c:'L'},
+  'calf':{x:'T',i:'T',c:'L'},
+  'ankle':{x:'T',i:'T',c:'L'},
+  'dorsal_foot':{x:'S',i:'N',c:'M'},
+  'plantar_foot':{x:'S',i:'N',c:'M'},
+  'toe':{x:'S',i:'N',c:'M'},
+  'genitalia':{x:'S',i:'N',c:'M'}
+};
+function cptGroups(loc){
+  var g=CPT_LOC[loc.subsub];
+  if(g) return g;
+  var face=(loc.area==='H'||loc.rg==='face');
+  return {x:face?'F':(loc.area==='M'?'S':'T'), i:face?'F':(loc.rg==='neck'?'N':'T'), c:loc.area==='H'?'E':'M', n:'Site not in the CPT group table: verify the code family.'};
 }
 
-// ── Repair CPT ────────────────────────────────────────────────────────────
-// repairGroup values from dropdown: face | scalp | trunk | neck
-// Intermediate:
-//   face  (12051-12057): Area H all sub-sites
-//   neck  (12041-12047): neck, hands, feet, genitalia, ankle
-//   trunk (12031-12037): scalp, trunk, all other extremities
-// Complex:
-//   face  (13150-13153): Area H (eyelids/nose/ears/lips) — only when area===H
-//   neck  (13120-13122): forehead/cheeks/chin (rg=face, area=M), neck (rg=neck)
-//   scalp (13100-13102): scalp (rg=scalp), trunk (rg=trunk)
-
-var IG={
-  face:[{x:2.5,c:'12051',d:'Intermediate repair, face/ears/eyelids/nose/lips, ≤2.5 cm'},{x:5.0,c:'12052',d:'Intermediate repair, face/ears/eyelids/nose/lips, 2.6–5.0 cm'},{x:7.5,c:'12053',d:'Intermediate repair, face/ears/eyelids/nose/lips, 5.1–7.5 cm'},{x:12.5,c:'12054',d:'Intermediate repair, face/ears/eyelids/nose/lips, 7.6–12.5 cm'},{x:20.0,c:'12055',d:'Intermediate repair, face/ears/eyelids/nose/lips, 12.6–20.0 cm'},{x:30.0,c:'12056',d:'Intermediate repair, face/ears/eyelids/nose/lips, 20.1–30.0 cm'},{x:Infinity,c:'12057',d:'Intermediate repair, face/ears/eyelids/nose/lips, >30.0 cm'}],
-  neck:[{x:2.5,c:'12041',d:'Intermediate repair, neck/hands/feet/genitalia, ≤2.5 cm'},{x:7.5,c:'12042',d:'Intermediate repair, neck/hands/feet/genitalia, 2.6–7.5 cm'},{x:12.5,c:'12044',d:'Intermediate repair, neck/hands/feet/genitalia, 7.6–12.5 cm'},{x:20.0,c:'12045',d:'Intermediate repair, neck/hands/feet/genitalia, 12.6–20.0 cm'},{x:30.0,c:'12046',d:'Intermediate repair, neck/hands/feet/genitalia, 20.1–30.0 cm'},{x:Infinity,c:'12047',d:'Intermediate repair, neck/hands/feet/genitalia, >30.0 cm'}],
-  trunk:[{x:2.5,c:'12031',d:'Intermediate repair, scalp/trunk/extremities, ≤2.5 cm'},{x:7.5,c:'12032',d:'Intermediate repair, scalp/trunk/extremities, 2.6–7.5 cm'},{x:12.5,c:'12034',d:'Intermediate repair, scalp/trunk/extremities, 7.6–12.5 cm'},{x:20.0,c:'12035',d:'Intermediate repair, scalp/trunk/extremities, 12.6–20.0 cm'},{x:30.0,c:'12036',d:'Intermediate repair, scalp/trunk/extremities, 20.1–30.0 cm'},{x:Infinity,c:'12037',d:'Intermediate repair, scalp/trunk/extremities, >30.0 cm'}]
+// Excision, benign / malignant (by excised diameter = lesion + 2 x margin, rounded to 0.1 cm)
+var EXC_LIM=[0.5,1.0,2.0,3.0,4.0,Infinity];
+var EXC_BANDS=['\u22640.5 cm','0.6\u20131.0 cm','1.1\u20132.0 cm','2.1\u20133.0 cm','3.1\u20134.0 cm','>4.0 cm'];
+var EXC_CODES={
+  'mal|F':['11640','11641','11642','11643','11644','11646'],
+  'mal|S':['11620','11621','11622','11623','11624','11626'],
+  'mal|T':['11600','11601','11602','11603','11604','11606'],
+  'ben|F':['11440','11441','11442','11443','11444','11446'],
+  'ben|S':['11420','11421','11422','11423','11424','11426'],
+  'ben|T':['11400','11401','11402','11403','11404','11406']
 };
-var CG={
-  face:[{x:1.0,c:'13150',d:'Complex repair, eyelids/nose/ears/lips, ≤1.0 cm'},{x:2.5,c:'13151',d:'Complex repair, eyelids/nose/ears/lips, 1.1–2.5 cm'},{x:7.5,c:'13152',d:'Complex repair, eyelids/nose/ears/lips, 2.6–7.5 cm'},{x:Infinity,c:'13153',d:'Complex repair, eyelids/nose/ears/lips, >7.5 cm (+add-on 13153)'}],
-  neck:[{x:1.1,c:'13120',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, ≤1.1 cm'},{x:7.5,c:'13121',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, 1.2–7.5 cm'},{x:Infinity,c:'13122',d:'Complex repair, forehead/cheeks/chin/neck/hands/feet, >7.5 cm (+add-on 13122)'}],
-  scalp:[{x:1.1,c:'13100',d:'Complex repair, scalp/trunk/extremities, ≤1.1 cm'},{x:7.5,c:'13101',d:'Complex repair, scalp/trunk/extremities, 1.2–7.5 cm'},{x:Infinity,c:'13102',d:'Complex repair, scalp/trunk/extremities, >7.5 cm (+add-on 13102)'}]
-};
-function fi(g,v){for(var i=0;i<g.length;i++)if(v<=g[i].x)return{e:g[i],i:i};return{e:g[g.length-1],i:g.length-1};}
-
-function getRepair(area,rg,rl){
-  var ig=(area==='H'||rg==='face')?IG.face:(rg==='neck')?IG.neck:IG.trunk;
-  var cg;
-  if(area==='H')cg=CG.face;
-  else if(rg==='neck'||rg==='face')cg=CG.neck;
-  else cg=CG.scalp;
-  var ir=fi(ig,rl),cr=fi(cg,rl);
-  return{int:ir.e,intUp:ir.i+1<ig.length?ig[ir.i+1]:null,cx:cr.e,cxUp:cr.i+1<cg.length?cg[cr.i+1]:null};
+var X_LABEL={F:'face/ears/eyelids/nose/lips',S:'scalp/neck/hands/feet/genitalia',T:'trunk/arms/legs'};
+function getExcision(mal,cg,size){
+  var i=band(EXC_LIM,r1(size));
+  return {c:V(EXC_CODES[(mal?'mal':'ben')+'|'+cg.x][i]),
+          d:'Excision, '+(mal?'malignant':'benign')+' lesion'+(mal?' including margins':'')+', '+X_LABEL[cg.x]+', '+EXC_BANDS[i]};
 }
+
+// Destruction, malignant lesion (by lesion diameter)
+var DES_CODES={F:['17280','17281','17282','17283','17284','17286'],S:['17270','17271','17272','17273','17274','17276'],T:['17260','17261','17262','17263','17264','17266']};
+function getDest(mal,cg,size){
+  if(!mal){
+    return {c:'N/A',d:'Destruction of a malignant lesion does not apply to a benign diagnosis. For premalignant lesions (AK) use 17000; for benign lesions other than skin tags use 17110/17111.'};
+  }
+  var i=band(EXC_LIM,r1(size));
+  return {c:V(DES_CODES[cg.x][i]),d:'Destruction, malignant lesion, '+X_LABEL[cg.x]+', '+EXC_BANDS[i]};
+}
+
+// Shave removal (by lesion diameter)
+var SHAVE_LIM=[0.5,1.0,2.0,Infinity];
+var SHAVE_BANDS=['\u22640.5 cm','0.6\u20131.0 cm','1.1\u20132.0 cm','>2.0 cm'];
+var SHAVE_CODES={F:['11310','11311','11312','11313'],S:['11305','11306','11307','11308'],T:['11300','11301','11302','11303']};
+function getShave(cg,diam){
+  var i=band(SHAVE_LIM,r1(diam));
+  return {c:V(SHAVE_CODES[cg.x][i]),d:'Shaving of epidermal or dermal lesion, single lesion, '+X_LABEL[cg.x]+', '+SHAVE_BANDS[i]};
+}
+
+// Repair (by total repair length, rounded to 0.1 cm)
+var INT_LIM={F:[2.5,5.0,7.5,12.5,20.0,30.0,Infinity],N:[2.5,7.5,12.5,20.0,30.0,Infinity],T:[2.5,7.5,12.5,20.0,30.0,Infinity]};
+var INT_CODES={F:['12051','12052','12053','12054','12055','12056','12057'],N:['12041','12042','12044','12045','12046','12047'],T:['12031','12032','12034','12035','12036','12037']};
+var INT_BANDS={
+  F:['\u22642.5 cm','2.6\u20135.0 cm','5.1\u20137.5 cm','7.6\u201312.5 cm','12.6\u201320.0 cm','20.1\u201330.0 cm','>30.0 cm'],
+  N:['\u22642.5 cm','2.6\u20137.5 cm','7.6\u201312.5 cm','12.6\u201320.0 cm','20.1\u201330.0 cm','>30.0 cm'],
+  T:['\u22642.5 cm','2.6\u20137.5 cm','7.6\u201312.5 cm','12.6\u201320.0 cm','20.1\u201330.0 cm','>30.0 cm']
+};
+var INT_LABEL={F:'face/ears/eyelids/nose/lips/mucous membrane',N:'neck/hands/feet/external genitalia',T:'scalp/axillae/trunk/extremities (excl. hands and feet)'};
+var CX={
+  T:{label:'trunk',p1:'13100',p2:'13101',add:'13102'},
+  L:{label:'scalp/arms/legs',p1:'13120',p2:'13121',add:'13122'},
+  M:{label:'forehead/cheeks/chin/mouth/neck/axillae/genitalia/hands/feet',p1:'13131',p2:'13132',add:'13133'},
+  E:{label:'eyelids/nose/ears/lips',p1:'13151',p2:'13152',add:'13153'}
+};
+function getRepair(cg,len){
+  var L=r1(len), ig=cg.i, k=band(INT_LIM[ig],L), X=CX[cg.c];
+  var res={L:L,intUp:null,cxUp:null};
+  var ic=V(INT_CODES[ig][k]);
+  res.int={c:ic,list:[ic],d:'Intermediate repair, '+INT_LABEL[ig]+', '+INT_BANDS[ig][k]};
+  if(k+1<INT_CODES[ig].length){ res.intUp={c:V(INT_CODES[ig][k+1]),d:'Intermediate repair, '+INT_LABEL[ig]+', '+INT_BANDS[ig][k+1]}; }
+  function row(code,txt){ return {c:V(code),d:'Complex repair, '+X.label+', '+txt}; }
+  if(L<1.1){
+    res.cx={c:'N/A',list:[],rows:[],none:true,d:'No complex repair code exists below 1.1 cm for this site'};
+  } else if(L<=2.5){
+    res.cx={c:V(X.p1),list:[V(X.p1)],rows:[row(X.p1,'1.1\u20132.5 cm')],none:false};
+    res.cxUp={c:V(X.p2),d:'Complex repair, '+X.label+', 2.6\u20137.5 cm'};
+  } else if(L<=7.5){
+    res.cx={c:V(X.p2),list:[V(X.p2)],rows:[row(X.p2,'2.6\u20137.5 cm')],none:false};
+    res.cxUp={c:V(X.add),d:'Complex repair add-on, '+X.label+', each additional 5 cm or less (list with '+X.p2+')',addon:true};
+  } else {
+    var units=Math.ceil(Math.round((L-7.5)*10)/50);
+    res.cx={c:V(X.p2)+', '+un(V(X.add),units),list:[V(X.p2),un(V(X.add),units)],none:false,
+            rows:[row(X.p2,'2.6\u20137.5 cm'),{c:V(X.add),d:'Complex repair add-on, '+X.label+', each additional 5 cm or less ('+units+' unit'+(units>1?'s':'')+')'}]};
+  }
+  if(!res.cx.d){ res.cx.d=res.cx.rows.map(function(x){return x.d;}).join('; '); }
+  return res;
+}
+
+// Mohs micrographic surgery (head/neck/hands/feet/genitalia vs trunk/arms/legs)
+function getMohsCPT(cg){
+  var blocks={c:V('17315'),d:'Mohs surgery \u2014 each additional block after the first 5 tissue blocks, any stage (add-on)'};
+  if(cg.x!=='T'){
+    return {first:{c:V('17311'),d:'Mohs surgery, head/neck/hands/feet/genitalia (or any site involving muscle, cartilage, bone, tendon, major nerves or vessels) \u2014 first stage, up to 5 tissue blocks'},
+            addon:{c:V('17312'),d:'Mohs surgery, head/neck/hands/feet/genitalia \u2014 each additional stage, up to 5 tissue blocks (add-on)'},blocks:blocks};
+  }
+  return {first:{c:V('17313'),d:'Mohs surgery, trunk/arms/legs \u2014 first stage, up to 5 tissue blocks'},
+          addon:{c:V('17314'),d:'Mohs surgery, trunk/arms/legs \u2014 each additional stage, up to 5 tissue blocks (add-on)'},blocks:blocks};
+}
+
+// Full-thickness graft and adjacent tissue transfer (reference panels; areas are estimates)
+var FTSG={T:['15200','15201'],L:['15220','15221'],M:['15240','15241'],E:['15260','15261']};
+var FLAP={T:['14000','14001'],L:['14020','14021'],M:['14040','14041'],E:['14060','14061']};
+function getGraftFlap(cg,excisionSize){
+  var A=Math.round(Math.PI*0.75*excisionSize*excisionSize*10)/10;
+  var X=CX[cg.c], f=FTSG[cg.c], p=FLAP[cg.c], rows, disp;
+  rows=[{c:V(f[0]),d:'Full-thickness skin graft, '+X.label+', 20 sq cm or less'}]; disp=V(f[0]);
+  if(A>20){ var gu=Math.ceil(A/20)-1; rows.push({c:V(f[1]),d:'Full-thickness skin graft add-on, '+X.label+', each additional 20 sq cm or part thereof ('+gu+' unit'+(gu>1?'s':'')+')'}); disp+=', '+un(V(f[1]),gu); }
+  var ftsg={disp:disp,rows:rows};
+  var fa=Math.round(A*2*10)/10, frows, fdisp;
+  if(fa<=10){ frows=[{c:V(p[0]),d:'Adjacent tissue transfer, '+X.label+', 10 sq cm or less'}]; fdisp=V(p[0]); }
+  else if(fa<=30){ frows=[{c:V(p[1]),d:'Adjacent tissue transfer, '+X.label+', 10.1\u201330.0 sq cm'}]; fdisp=V(p[1]); }
+  else if(fa<=60){ frows=[{c:V('14301'),d:'Adjacent tissue transfer, any area, 30.1\u201360.0 sq cm'}]; fdisp=V('14301'); }
+  else { var fu=Math.ceil((fa-60)/30); frows=[{c:V('14301'),d:'Adjacent tissue transfer, any area, 30.1\u201360.0 sq cm'},{c:V('14302'),d:'Adjacent tissue transfer add-on, each additional 30.0 sq cm or part thereof ('+fu+' unit'+(fu>1?'s':'')+')'}]; fdisp=V('14301')+', '+un(V('14302'),fu); }
+  return {defectArea:A,flapEstArea:fa,ftsg:ftsg,flap:{disp:fdisp,rows:frows}};
+}
+
+// ICD-10-CM eyelid codes (upper/lower and laterality are part of the code)
+var EYE_BCC={u:'C44.111',ru:'C44.1121',rl:'C44.1122',lu:'C44.1191',ll:'C44.1192',d:'BCC of skin of eyelid, including canthus'};
+var EYE_SCC={u:'C44.121',ru:'C44.1221',rl:'C44.1222',lu:'C44.1291',ll:'C44.1292',d:'SCC of skin of eyelid, including canthus'};
+var EYE_MIS={u:'D03.10',ru:'D03.111',rl:'D03.112',lu:'D03.121',ll:'D03.122',d:'Melanoma in situ of eyelid, including canthus'};
+var EYE_MEL={u:'C43.10',ru:'C43.111',rl:'C43.112',lu:'C43.121',ll:'C43.122',d:'Malignant melanoma of eyelid, including canthus'};
+function eyelidICD(loc,lat,k){
+  var s=loc.subsub||'', up=s==='upper_eyelid', lo=s==='lower_eyelid', side=lat==='R'?'r':lat==='L'?'l':'';
+  if((up||lo)&&side){ return {c:k[side+(up?'u':'l')],d:k.d+' ('+(side==='r'?'right':'left')+' '+(up?'upper':'lower')+' eyelid)'}; }
+  return {c:k.u,d:k.d+' (eyelid side/position unspecified)'};
+}
+// ===CPT_TABLES_END===
+
+
+
 
 // ── Destruction CPT ───────────────────────────────────────────────────────
-function getDest(mal,area,size){
-  if(!mal){
-    // 17000=destruction of premalignant lesion (AK); 17110=benign flat lesions (warts/molluscum)
-    // Neither applies to standard benign excision candidates (cysts, lipomas, DFs)
-    // Only show if diagnosis suggests a destructible lesion
-    return{c:'N/A',d:'Destruction not applicable for standard benign excision — if treating AK/premalignant use 17000; benign flat lesions (warts/molluscum) use 17110'};
-  }
-  var base=area==='H'?17280:area==='M'?17270:17260;
-  var grp=area==='H'?'face/ears/eyelids/nose/lips':area==='M'?'scalp/neck/hands/feet/genitalia':'trunk/extremities';
-  var off,sd;
-  if(size<=0.5){off=0;sd='≤0.5 cm';}else if(size<=1.0){off=1;sd='0.6–1.0 cm';}else if(size<=2.0){off=2;sd='1.1–2.0 cm';}else if(size<=3.0){off=3;sd='2.1–3.0 cm';}else if(size<=4.0){off=4;sd='3.1–4.0 cm';}else{off=5;sd='>4.0 cm';}
-  return{c:String(base+off),d:'Destruction malignant lesion, '+grp+', '+sd};
-}
+
 
 // ── Mohs CPT ──────────────────────────────────────────────────────────────
-function getMohsCPT(area){
-  return(area==='H'||area==='M')
-    ?{first:{c:'17311',d:'Mohs surgery, head/neck/hands/feet/genitalia — first stage, up to 5 tissue blocks'},addon:{c:'17312',d:'Mohs surgery, head/neck/hands/feet/genitalia — each additional stage (add-on)'},blocks:{c:'17315',d:'Mohs surgery — add-on per each additional block beyond 5 in any single stage (all locations)'}}
-    :{first:{c:'17313',d:'Mohs surgery, trunk/extremities — first stage, up to 5 tissue blocks'},addon:{c:'17314',d:'Mohs surgery, trunk/extremities — each additional stage (add-on)'},blocks:{c:'17315',d:'Mohs surgery — add-on per each additional block beyond 5 in any single stage (all locations)'}};
-}
+
 
 // ── Mohs AUC ──────────────────────────────────────────────────────────────
 function getMohs(dt,sub,pr,area,diam,ic){
@@ -1665,7 +1840,7 @@ function render(r){
   var showM=r.mohs.res==='ok'||r.mohs.res==='unc'||r.mohs.res==='lit';
 
   var iSu=r.repair.intUp?'<span class="su">↑ step-up: '+r.repair.intUp.c+'</span>':'';
-  var cSu=r.repair.cxUp ?'<span class="su">↑ step-up: '+r.repair.cxUp.c+'</span>':'';
+  var cSu=r.repair.cxUp?(r.repair.cxUp.addon?'<span class="su">↑ if &gt;7.5 cm: +'+r.repair.cxUp.c+'</span>':'<span class="su">↑ step-up: '+r.repair.cxUp.c+'</span>'):'';
 
   var mohsCpt=showM
     ?'<hr class="sdiv"><div class="sl2">Mohs CPT codes (if referred)</div><div class="cg" style="line-height:1.8"><div class="cr"><span class="cl">Mohs first stage:</span><span class="cv">'+r.mohsCPT.first.c+'</span></div><div class="cr"><span class="cl">Each additional stage (add-on):</span><span class="cv">'+r.mohsCPT.addon.c+'</span></div></div>'
@@ -1673,7 +1848,7 @@ function render(r){
 
   var legM=showM?'<tr><td>'+r.mohsCPT.first.c+'</td><td>'+r.mohsCPT.first.d+'</td></tr><tr><td>'+r.mohsCPT.addon.c+'</td><td>'+r.mohsCPT.addon.d+'</td></tr>':'';
   var legIU=r.repair.intUp?'<tr><td>'+r.repair.intUp.c+'</td><td><em>Step-up intermediate:</em> '+r.repair.intUp.d+'</td></tr>':'';
-  var legCU=r.repair.cxUp ?'<tr><td>'+r.repair.cxUp.c +'</td><td><em>Step-up complex:</em> '   +r.repair.cxUp.d +'</td></tr>':'';
+  var legCU=r.repair.cxUp ?'<tr><td>'+r.repair.cxUp.c +'</td><td><em>'+(r.repair.cxUp.addon?'If larger:':'Step-up complex:')+'</em> '+r.repair.cxUp.d +'</td></tr>':'';
 
   var flM={ok:'fl-ok',low:'fl-low',inf:'fl-inf'};
   var flL={ok:'WITHIN GUIDELINES',low:'BELOW GUIDELINE',inf:'NOTE'};
@@ -1742,34 +1917,30 @@ function render(r){
         +'<tr><td>'+r.mohsCPT.first.c+'</td><td>'+r.mohsCPT.first.d+'</td></tr>'
         +'<tr><td>'+r.mohsCPT.addon.c+'</td><td>'+r.mohsCPT.addon.d+'</td></tr>'
         +'<tr><td>'+r.mohsCPT.blocks.c+'</td><td>'+r.mohsCPT.blocks.d+'</td></tr>'
-      +'</table>';
+      +'</table>'
+      +'<div class="opt-caveat" style="margin-top:8px">Mohs codes include the excision (11600–11646), destruction (17260–17286) and pathology (88300–88309, 88329–88332); do not report these separately. Repairs, flaps and grafts are separately reportable (NCCI Policy Manual, Ch. III, F).</div>';
   }
 
   // Graft panel
   var gf=r.graftFlap;
-    var graftPanelHtml=''
+  function gfRows(rows){ return rows.map(function(x){ return '<tr><td>'+x.c+'</td><td>'+x.d+'</td></tr>'; }).join(''); }
+  var graftPanelHtml=''
     +'<div class="opt-caveat">⚠️ Estimated from 3:1 ellipse formula (defect ≈ π × 0.75 × excision²). Actual defect area will vary.</div>'
     +'<div class="cg" style="line-height:1.8">'
       +'<div class="cr"><span class="cl">Estimated defect area:</span><span class="cv">≈'+gf.defectArea.toFixed(1)+' sq cm</span></div>'
-      +'<div class="cr"><span class="cl">Full-thickness graft (FTSG):</span><span class="cv">'+gf.ftsg+'<span class="su">↑ '+gf.ftsgUp+'</span></span></div>'
+      +'<div class="cr"><span class="cl">Full-thickness graft (FTSG):</span><span class="cv">'+gf.ftsg.disp+'</span></div>'
     +'</div>'
-    +'<table class="leg" style="margin-top:8px">'
-      +'<tr><td>'+gf.ftsg+'</td><td>'+gf.ftsgDesc+'</td></tr>'
-      +'<tr><td>'+gf.ftsgUp+'</td><td>'+gf.ftsgUpDesc+'</td></tr>'
-    +'</table>'
+    +'<table class="leg" style="margin-top:8px">'+gfRows(gf.ftsg.rows)+'</table>';
 
   // Flap panel
   var flapPanelHtml=''
-    +'<div class="opt-caveat">⚠️ Billable flap area = defect + tissue rearranged (typically 1.5–3× defect). Estimate uses 2× defect as midpoint.</div>'
+    +'<div class="opt-caveat">⚠️ Billable flap area = defect + tissue rearranged (typically 1.5–3× defect). Estimate uses 2× defect as midpoint. Adjacent tissue transfer includes the excision and repair: do not also report 11400–11646 or 12001–13160 for the same lesion (NCCI Policy Manual, Ch. III, H).</div>'
     +'<div class="cg" style="line-height:1.8">'
       +'<div class="cr"><span class="cl">Estimated defect area:</span><span class="cv">≈'+gf.defectArea.toFixed(1)+' sq cm</span></div>'
       +'<div class="cr"><span class="cl">Est. billable flap area:</span><span class="cv">≈'+gf.flapEstArea.toFixed(1)+' sq cm</span></div>'
-      +'<div class="cr"><span class="cl">Adjacent tissue transfer:</span><span class="cv">'+gf.flap+'<span class="su">↑ '+gf.flapUp+'</span></span></div>'
+      +'<div class="cr"><span class="cl">Adjacent tissue transfer:</span><span class="cv">'+gf.flap.disp+'</span></div>'
     +'</div>'
-    +'<table class="leg" style="margin-top:8px">'
-      +'<tr><td>'+gf.flap+'</td><td>'+gf.flapDesc+'</td></tr>'
-      +'<tr><td>'+gf.flapUp+'</td><td>'+gf.flapUpDesc+'</td></tr>'
-    +'</table>';
+    +'<table class="leg" style="margin-top:8px">'+gfRows(gf.flap.rows)+'</table>';
 
   // Path panel
     // ── Path panel: surgical path + conditional IHC ────────────────────
@@ -1818,12 +1989,51 @@ function render(r){
     +'<div class="opt-panel" id="panPath-'+uid+'"><div class="opt-label">Pathology CPT codes</div>'+pathPanelHtml+'</div>';
 
   // ── Code descriptions (legend) ────────────────────────────────────────
-  var legBase=''
-    +'<tr><td>'+r.icd10.c+'</td><td>'+r.icd10.d+'</td></tr>'
-    +'<tr><td>'+r.excision.c+'</td><td>'+r.excision.d+'</td></tr>'
-    +'<tr><td>'+r.repair.int.c+'</td><td>'+r.repair.int.d+'</td></tr>'+legIU
-    +'<tr><td>'+r.repair.cx.c+'</td><td>'+r.repair.cx.d+'</td></tr>'+legCU
-    +'<tr><td>'+r.dest.c+'</td><td>'+r.dest.d+'</td></tr>'+((r.mal===false&&(r.subtype==='nevus'||r.subtype==='sk'||r.subtype==='tag'))?(function(){var t=SHAVE_CPT[r.area]||SHAVE_CPT['L'];var sc=t.find(function(x){return r.diameter<=x.max;})||t[t.length-1];var rows='<tr><td>'+sc.c+'</td><td>'+sc.d+'</td></tr>';if(r.subtype==='sk'||r.subtype==='tag'){rows+='<tr><td>17110</td><td>Destruction of benign lesions, up to 14 lesions (use 17111 for ≥15)</td></tr>';}return rows;})():'');
+  // ── Billing alternatives (one per lesion) ─────────────────────────────
+  var noRepair=(!r.mal&&['11400','11420','11440'].indexOf(r.excision.c)>=0);
+  var shaveRow=(r.mal===false&&(r.subtype==='nevus'||r.subtype==='sk'))?getShave(r.cpt,r.diameter):null;
+  var isTag=(r.mal===false&&r.subtype==='tag');
+  var sc=[];
+  if(noRepair){
+    sc.push({label:'Excision (repair included)',codes:[r.excision.c],suffix:''});
+  } else {
+    sc.push({label:'Excision + intermediate repair',codes:[r.excision.c].concat(r.repair.int.list),suffix:iSu});
+    if(!r.repair.cx.none){ sc.push({label:'Excision + complex repair',codes:[r.excision.c].concat(r.repair.cx.list),suffix:cSu}); }
+    else { sc.push({label:'Excision + complex repair',codes:null,text:'not reportable (repair under 1.1 cm)'}); }
+    sc.push({label:'Excision, simple closure',codes:[r.excision.c],suffix:''});
+  }
+  if(r.mal&&r.dest.c!=='N/A'){ sc.push({label:'Destruction (ED&amp;C / LN2)',codes:[r.dest.c],suffix:''}); }
+  if(shaveRow){ sc.push({label:'Shave removal',codes:[shaveRow.c],suffix:''}); }
+  if(isTag){ sc.push({label:'Skin tag removal (up to 15)',codes:['11200'],suffix:'<span class="su">+11201 per additional 10</span>'}); }
+  if(r.mal===false&&r.subtype==='sk'){ sc.push({label:'Destruction, benign (up to 14)',codes:['17110'],suffix:'<span class="su">17111 if 15 or more</span>'}); }
+  var scHtml='<hr class="cdiv"><div class="sl2" style="margin:2px 0 4px">Billing alternatives (choose one per lesion)</div>';
+  var firstStr='';
+  sc.forEach(function(s){
+    if(!s.codes){ scHtml+='<div class="cr" style="padding-left:24px"><span class="cl">'+s.label+':</span><span class="cv" style="font-weight:400;color:var(--text3)">'+s.text+'</span></div>'; return; }
+    var str='ICD-10: '+r.icd10.c+'; CPT codes: '+s.codes.join(', ');
+    var isFirst=!firstStr; if(isFirst) firstStr=str;
+    scHtml+='<label class="cr sc-row"><input type="radio" name="scen" data-str="'+str+'"'+(isFirst?' checked':'')+' onchange="pickScenario(this)"><span class="cl">'+s.label+':</span><span class="cv">'+s.codes.join(', ')+'</span>'+(s.suffix||'')+'</label>';
+  });
+  var scNotes='<p class="nt" style="margin-top:6px">Simple closure is included in the excision code. Intermediate or complex repair is reported instead of simple closure, not in addition to it.</p>';
+  if(noRepair) scNotes+='<p class="nt">Benign excisions of 0.5 cm or less (11400, 11420, 11440) include repair; no repair code is separately reportable (Medicare NCCI Policy Manual, Ch. III).</p>';
+  if(r.cpt.n) scNotes+='<p class="nt" style="color:var(--unc-fg)">⚠ '+r.cpt.n+'</p>';
+  var copyBlock='<div style="margin-top:10px;display:flex;align-items:stretch;gap:8px;">'
+    +'<button class="copy-btn" id="copy-codes-btn" data-codes="'+firstStr+'" onclick="copyCodes(this.dataset.codes)">Copy codes</button>'
+    +'<input type="text" class="copy-preview" id="copy-preview" value="'+firstStr+'">'
+    +'</div>';
+
+  // ── Code descriptions (legend) ────────────────────────────────────────
+  function legRow(cd,ds){ return '<tr><td>'+cd+'</td><td>'+ds+'</td></tr>'; }
+  var legBase=legRow(r.icd10.c,r.icd10.d)+legRow(r.excision.c,r.excision.d);
+  if(!noRepair){
+    legBase+=legRow(r.repair.int.c,r.repair.int.d)+legIU;
+    if(r.repair.cx.none){ legBase+=legRow('—',r.repair.cx.d); }
+    else { r.repair.cx.rows.forEach(function(x){ legBase+=legRow(x.c,x.d); }); legBase+=legCU; }
+  }
+  if(r.mal&&r.dest.c!=='N/A'){ legBase+=legRow(r.dest.c,r.dest.d); }
+  if(shaveRow){ legBase+=legRow(shaveRow.c,shaveRow.d); }
+  if(isTag){ legBase+=legRow('11200','Removal of skin tags, multiple fibrocutaneous tags, any area; up to and including 15 lesions')+legRow('11201','Removal of skin tags, each additional 10 lesions or part thereof (add-on)'); }
+  if(r.mal===false&&r.subtype==='sk'){ legBase+=legRow('17110','Destruction of benign lesions other than skin tags or cutaneous vascular proliferative lesions; up to 14 lesions')+legRow('17111','Destruction of benign lesions other than skin tags or cutaneous vascular proliferative lesions; 15 or more lesions'); }
   // legMohs/legGraft/legFlap/legPath moved into toggle panels
 
   var html=
@@ -1839,23 +2049,7 @@ function render(r){
         +'<div class="cr"><span class="cl">Surgical margin:</span><span class="cv">'+(r.margin*10).toFixed(0)+' mm</span></div>'
         +'<div class="cr"><span class="cl">Excision length:</span><span class="cv">'+r.excisionSize.toFixed(1)+' cm</span></div>'
         +'<div class="cr"><span class="cl">Repair length:</span><span class="cv">'+r.repairLength.toFixed(1)+' cm</span></div>'
-        +'<hr class="cdiv">'
-        +'<div class="cr"><span class="cl">Excision + intermediate repair:</span><span class="cv">'+r.excision.c+', '+r.repair.int.c+'</span>'+iSu+'</div>'
-        +'<div class="cr"><span class="cl">Excision + complex repair:</span><span class="cv">'+r.excision.c+', '+r.repair.cx.c+'</span>'+cSu+'</div>'
-        +'<div class="cr"><span class="cl">Destruction (ED&amp;C / LN2):</span><span class="cv">'+r.dest.c+'</span></div>'+((r.mal===false&&(r.subtype==='nevus'||r.subtype==='sk'||r.subtype==='tag'))?'<div class="cr"><span class="cl">Shave removal:</span><span class="cv">'+(function(){var t=SHAVE_CPT[r.area]||SHAVE_CPT["L"];return(t.find(function(x){return r.diameter<=x.max;})||t[t.length-1]).c;})()+'</span></div>':'')
-      +(function(){
-        var icd=r.icd10.c;
-        var intCodes=[r.excision.c,r.repair.int.c];
-        var cxCodes=[r.excision.c,r.repair.cx.c];
-        var destCode=r.dest.c!=='N/A'?r.dest.c:null;
-        var shaveCode=(r.mal===false&&(r.subtype==='nevus'||r.subtype==='sk'||r.subtype==='tag'))?(function(){var t=SHAVE_CPT[r.area]||SHAVE_CPT['L'];return(t.find(function(x){return r.diameter<=x.max;})||t[t.length-1]).c;})():null;
-        var cptParts=[intCodes.join(', '),cxCodes.join(', '),destCode,shaveCode].filter(Boolean);
-        var copyStr='ICD-10: '+icd+'; CPT codes: '+cptParts.join(', ');
-        return '<div style="margin-top:10px;display:flex;align-items:stretch;gap:8px;">'
-          +'<button class="copy-btn" id="copy-codes-btn" data-codes="'+copyStr+'" onclick="copyCodes(this.dataset.codes)">Copy codes</button>'
-          +'<input type="text" class="copy-preview" id="copy-preview" value="'+copyStr+'">'
-          +'</div>';
-      })()
+        +scHtml+scNotes+copyBlock
       +'</div>'
       +togglesHtml
     +'</div></div>'
@@ -1909,7 +2103,7 @@ function render(r){
       +(r.marginG.src?'<p class="msr">Source: '+r.marginG.src+'</p>':'')
     +'</div></div>'
     // ── Card 2: Code descriptions (collapsible, open by default) ──────
-    +'<div class="card">'      +'<div class="ch" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center" onclick="(function(el){var b=el.nextElementSibling;var open=b.style.display!==\'none\';b.style.display=open?\'none\':\'\';el.querySelector(\'.cd-arrow\').textContent=open?\'\u25b6\':\'\u25bc\';})(this)">'        +'<span>Code Descriptions</span><span class="cd-arrow">▼</span>'      +'</div>'      +'<div class="cb" id="desc-body" style="display:none">'        +'<table class="leg">'+legBase+'</table>'        +(r.repair.intUp||r.repair.cxUp?'<p class="nt">↑ Step-up codes shown on same line if repair is larger than estimated.</p>':'')        +'<p class="nt" style="margin-top:6px">Verify all codes before billing. ICD-10 codes are approximate — confirm site-specific code per documentation. Toggle panels above for Mohs/graft/flap/path descriptions.</p>'      +'</div>'    +'</div>'
+    +'<div class="card">'      +'<div class="ch" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center" onclick="(function(el){var b=el.nextElementSibling;var open=b.style.display!==\'none\';b.style.display=open?\'none\':\'\';el.querySelector(\'.cd-arrow\').textContent=open?\'\u25b6\':\'\u25bc\';})(this)">'        +'<span>Code Descriptions</span><span class="cd-arrow">▼</span>'      +'</div>'      +'<div class="cb" id="desc-body" style="display:none">'        +'<table class="leg">'+legBase+'</table>'        +(r.repair.intUp||r.repair.cxUp?'<p class="nt">↑ Step-up and add-on codes are shown on the same line when the repair is larger than estimated.</p>':'')        +'<p class="nt" style="margin-top:6px">Preoperative estimates only: confirm every code against the procedure performed and documented. Codes follow CPT and Medicare NCCI conventions (2026); payer and MAC policies vary. ICD-10 codes may need site-specific refinement. Toggle panels above for Mohs/graft/flap/path descriptions.</p>'      +'</div>'    +'</div>'
 
 
   document.getElementById('form-section').style.display='none';
@@ -2184,7 +2378,7 @@ function updateMarginHint(diagVal) {
 
 
 // ── Pathology CPT ────────────────────────────────────────────────────────
-function getPathCPT(diagType) {
+function getPathCPT(diagType, subtype) {
   // IHC panel definitions
   // ihc: array of {ab: antibody name, purpose: brief rationale}
   // ihcNote: caveat about ordering
@@ -2224,8 +2418,8 @@ function getPathCPT(diagType) {
       ]
     },
     'DFSP': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex soft tissue neoplasm',
-      note:'Used for DFSP — requires extensive sectioning.',
+      c:'88307', d:'Surgical pathology, level V: soft tissue mass (except lipoma), biopsy or simple excision',
+      note:'Level V applies to a soft tissue mass specimen. A skin excision specimen is level IV (88305) and extensive resection of a soft tissue tumor is level VI (88309); confirm the specimen type.',
       ihc:[
         {ab:'CD34',       purpose:'Strongly and diffusely positive in DFSP'},
         {ab:'Factor XIIIa', purpose:'Negative in DFSP; positive in dermatofibroma — useful distinction'}
@@ -2242,8 +2436,8 @@ function getPathCPT(diagType) {
       ]
     },
     'LEIOMYOSARCOMA': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex soft tissue neoplasm',
-      note:'Used for leiomyosarcoma — requires extensive sectioning.',
+      c:'88307', d:'Surgical pathology, level V: soft tissue mass (except lipoma), biopsy or simple excision',
+      note:'Level V applies to a soft tissue mass specimen. A skin excision specimen is level IV (88305) and extensive resection of a soft tissue tumor is level VI (88309); confirm the specimen type.',
       ihc:[
         {ab:'SMA (smooth muscle actin)', purpose:'Strongly positive in leiomyosarcoma'},
         {ab:'Desmin',    purpose:'Positive in smooth muscle differentiation'},
@@ -2251,8 +2445,8 @@ function getPathCPT(diagType) {
       ]
     },
     'SPINDLE_CELL': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex soft tissue neoplasm',
-      note:'Used for spindle cell tumors — broad panel needed for differential.',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
+      note:'Skin specimen, level IV. Broad IHC panel needed for the differential.',
       ihc:[
         {ab:'S100 / SOX10', purpose:'Positive in spindle cell melanoma; neural tumors'},
         {ab:'CD34',          purpose:'Positive in DFSP, solitary fibrous tumor'},
@@ -2263,8 +2457,8 @@ function getPathCPT(diagType) {
       ]
     },
     'ECCRINE_APOCRINE': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex soft tissue neoplasm',
-      note:'Used for eccrine/apocrine carcinomas.',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
+      note:'Skin specimen, level IV.',
       ihc:[
         {ab:'CK7',     purpose:'Positive in eccrine/apocrine carcinoma'},
         {ab:'CEA',     purpose:'Positive in eccrine carcinoma (intraluminal)'},
@@ -2274,8 +2468,8 @@ function getPathCPT(diagType) {
       ]
     },
     'MAC': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex soft tissue neoplasm',
-      note:'Used for MAC — deep infiltration requires extensive sectioning. IHC helps exclude metastatic adenocarcinoma.',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
+      note:'Skin specimen, level IV. IHC helps exclude metastatic adenocarcinoma.',
       ihc:[
         {ab:'CK7',   purpose:'Positive — eccrine/adnexal origin'},
         {ab:'CK5/6', purpose:'Positive — squamous/adnexal differentiation'},
@@ -2298,8 +2492,8 @@ function getPathCPT(diagType) {
       ]
     },
     'EMPD': {
-      c:'88307', d:'Surgical pathology, gross and microscopic — complex malignant neoplasm',
-      note:'Used for EMPD — requires extensive sectioning. IHC essential to exclude secondary Paget’s from internal malignancy.',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
+      note:'Skin specimen, level IV. IHC essential to exclude secondary Paget’s disease from an internal malignancy.',
       ihc:[
         {ab:'CK7',     purpose:'Positive in EMPD — primary marker'},
         {ab:'GCDFP-15', purpose:'Positive in primary EMPD — apocrine origin'},
@@ -2317,8 +2511,13 @@ function getPathCPT(diagType) {
   var noIHC = ['BCC','SCC','KERATOACANTHOMA','BENIGN','OTHER_BENIGN','TRICHILEMMAL','MUCINOUS_CA','OTHER_MAL'];
 
   if (diagType === 'BENIGN' || diagType === 'OTHER_BENIGN') {
-    return {c:'88304', d:'Surgical pathology, gross and microscopic — skin cyst / benign lesion',
-      note:'Standard for small benign excisions (cyst, tag, nevus, SK, DF).', ihc:null};
+    // CPT specimen list: level III = skin cyst/tag/debridement and soft tissue lipoma; level IV = skin, other than cyst/tag/debridement/plastic repair
+    if (subtype==='cyst' || subtype==='tag' || subtype==='lipoma') {
+      return {c:'88304', d:'Surgical pathology, level III: skin cyst or tag; soft tissue lipoma',
+        note:'Level III per the CPT specimen list (skin cyst/tag/debridement; soft tissue lipoma).', ihc:null};
+    }
+    return {c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
+      note:'Level IV per the CPT specimen list (nevus, seborrheic keratosis, dermatofibroma and other skin lesions).', ihc:null};
   }
   if (panels[diagType]) {
     var p = panels[diagType];
@@ -2340,60 +2539,7 @@ function getPathCPT(diagType) {
 
 
 // ── Graft / Flap area estimate ────────────────────────────────────────────
-function getGraftFlap(area, excisionSize) {
-  // Defect area: ellipse with 3:1 ratio
-  // Ellipse area = π × (L/2) × (W/2) where L = 3×exc, W = exc
-  var defectArea = Math.round(Math.PI * 0.75 * excisionSize * excisionSize * 10) / 10;
 
-  // FTSG codes by location
-  var ftsg, ftsgUp, ftsgDesc, ftsgUpDesc;
-  if (area === 'H') {
-    ftsg = '15260'; ftsgUp = '15261';
-    ftsgDesc = 'FTSG, nose/ears/eyelids/lips, ≤20 sq cm';
-    ftsgUpDesc = 'FTSG, nose/ears/eyelids/lips, each additional 20 sq cm (add-on)';
-  } else if (area === 'M') {
-    // Scalp → 15220; neck/hands/feet → 15240; use 15240 as default for M
-    var isScalpM = false; // we don't have sub here, use conservative
-    ftsg = '15240'; ftsgUp = '15241';
-    ftsgDesc = 'FTSG, forehead/cheeks/chin/neck/hands/feet, ≤20 sq cm';
-    ftsgUpDesc = 'FTSG, same sites, each additional 20 sq cm (add-on)';
-  } else {
-    ftsg = '15200'; ftsgUp = '15201';
-    ftsgDesc = 'FTSG, trunk, ≤20 sq cm';
-    ftsgUpDesc = 'FTSG, trunk, each additional 20 sq cm (add-on)';
-  }
-
-  // Flap codes by location (14000-series)
-  var flap, flapUp, flapDesc, flapUpDesc;
-  if (area === 'H') {
-    flap = '14060'; flapUp = '14061';
-    flapDesc = 'Adjacent tissue transfer, eyelids/nose/ears/lips, ≤10 sq cm';
-    flapUpDesc = 'Adjacent tissue transfer, eyelids/nose/ears/lips, 10.1–30.0 sq cm';
-  } else if (area === 'M') {
-    flap = '14040'; flapUp = '14041';
-    flapDesc = 'Adjacent tissue transfer, forehead/cheeks/chin/neck/hands/feet, ≤10 sq cm';
-    flapUpDesc = 'Adjacent tissue transfer, same sites, 10.1–30.0 sq cm';
-  } else {
-    flap = '14000'; flapUp = '14001';
-    flapDesc = 'Adjacent tissue transfer, trunk/extremities, ≤10 sq cm';
-    flapUpDesc = 'Adjacent tissue transfer, trunk/extremities, 10.1–30.0 sq cm';
-  }
-
-  // Pick appropriate tier based on defect area
-  var ftsgFinal = defectArea <= 20 ? ftsg : ftsgUp;
-  var ftsgFinalDesc = defectArea <= 20 ? ftsgDesc : ftsgUpDesc;
-  // Flap area is typically 1.5-3× defect — use 2× as midpoint estimate
-  var flapEstArea = Math.round(defectArea * 2 * 10) / 10;
-  var flapFinal = flapEstArea <= 10 ? flap : flapUp;
-  var flapFinalDesc = flapEstArea <= 10 ? flapDesc : flapUpDesc;
-
-  return {
-    defectArea: defectArea,
-    flapEstArea: flapEstArea,
-    ftsg: ftsgFinal, ftsgDesc: ftsgFinalDesc, ftsgUp: ftsgUp, ftsgUpDesc: ftsgUpDesc,
-    flap: flapFinal, flapDesc: flapFinalDesc, flapUp: flapUp, flapUpDesc: flapUpDesc
-  };
-}
 
 // ── Remote logging ────────────────────────────────────────────────────────
 // Paste your deployed Apps Script URL here:
@@ -2502,32 +2648,7 @@ document.getElementById('diagnosis').addEventListener('change',function(){
 
 
 
-// ── Shave CPT logic ─────────────────────────────────────────────
-// CPT 11300-11313: shave removal by area and lesion diameter
-// H (face/ears/eyelids/nose/lips): 11310-11313
-// M (scalp/neck/hands/feet): 11305-11308
-// L (trunk/arms/legs): 11300-11303
-// Tiers: ≤0.5cm, 0.6-1.0cm, 1.1-2.0cm, >2.0cm
-var SHAVE_CPT = {
-  H: [
-    {max:0.5, c:'11310', d:'Shave removal, face/ears/eyelids/nose/lips/mucous membrane, ≤0.5 cm'},
-    {max:1.0, c:'11311', d:'Shave removal, face/ears/eyelids/nose/lips/mucous membrane, 0.6–1.0 cm'},
-    {max:2.0, c:'11312', d:'Shave removal, face/ears/eyelids/nose/lips/mucous membrane, 1.1–2.0 cm'},
-    {max:99,  c:'11313', d:'Shave removal, face/ears/eyelids/nose/lips/mucous membrane, >2.0 cm'},
-  ],
-  M: [
-    {max:0.5, c:'11305', d:'Shave removal, scalp/neck/hands/feet, ≤0.5 cm'},
-    {max:1.0, c:'11306', d:'Shave removal, scalp/neck/hands/feet, 0.6–1.0 cm'},
-    {max:2.0, c:'11307', d:'Shave removal, scalp/neck/hands/feet, 1.1–2.0 cm'},
-    {max:99,  c:'11308', d:'Shave removal, scalp/neck/hands/feet, >2.0 cm'},
-  ],
-  L: [
-    {max:0.5, c:'11300', d:'Shave removal, trunk/arms/legs, ≤0.5 cm'},
-    {max:1.0, c:'11301', d:'Shave removal, trunk/arms/legs, 0.6–1.0 cm'},
-    {max:2.0, c:'11302', d:'Shave removal, trunk/arms/legs, 1.1–2.0 cm'},
-    {max:99,  c:'11303', d:'Shave removal, trunk/arms/legs, >2.0 cm'},
-  ],
-};
+
 
 // ICD-10 for shave diagnoses (simplified — no laterality variation for most)
 function getShaveICD10(diagVal, lat) {
@@ -2568,6 +2689,10 @@ window.switchModalTab = function(tab){
 
 
 // ── Copy codes ───────────────────────────────────────────────────────
+window.pickScenario = function(el){
+  var p=document.getElementById('copy-preview'), b=document.getElementById('copy-codes-btn'), s=el.getAttribute('data-str');
+  if(p) p.value=s; if(b) b.setAttribute('data-codes',s);
+};
 window.copyCodes = function(str){
   var btn = document.getElementById('copy-codes-btn');
   var prev = document.getElementById('copy-preview');
