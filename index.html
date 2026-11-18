@@ -635,27 +635,16 @@ tbody tr.totals-row td { background: #edf2f7; font-weight: 700; border-top: 2px 
 
 <script>
 // ── App version + Change Log ──────────────────────────────────────────────────
-const APP_VERSION = 'v4.048';
+const APP_VERSION = 'v4.046';
 const CHANGELOG = [
-  { ver:'v4.048', date:'Nov 18', area:'RR tracker: absence tag appended to count', tags:['ui'],
-    notes:[
-      'RR tracker: reverted label-first approach. Cells now always show the numeric RR count with normal coloring.',
-      'For Path, Vac, Conf, and Elective weeks, the absence type appears as a small italic suffix in parens — e.g. "2 (vac)". Mohs, QI, Exam, etc. show count only.',
-    ]},
-  { ver:'v4.047', date:'Nov 15', area:'RR tracker: Path/Vac label refinement', tags:['ui'],
-    notes:[
-      'RR tracker: absence label shown only for Path and Vac weeks (not QI, Conf, Mohs, etc.).',
-      'RR count always included in parens alongside the label — e.g. "path (1)" — to reflect partial-absence weeks.',
-    ]},
-  { ver:'v4.046', date:'Nov 15', area:'BV slot revisions + CC date fix + RR absence labels', tags:['rule','fix','ui'],
+  { ver:'v4.046', date:'Nov 18', area:'BV slot revisions + CC date fix', tags:['rule','fix'],
     notes:[
       'BV Tue PM: removed SOC from toggleOff (Kakpovbia + Hazan remain).',
       'BV Wed AM: added LegUlcer to toggleOff as a default-off option.',
-      'BV Thu PM: removed Main/MC from fixed slots — now 3 plain Main (mainMin stays 3).',
-      'BV Thu AM: removed Surg from fixed slots — now Vulvar + 2×CT only (mainMin stays 2).',
-      'CC calendar: schedule ISO generation now uses local date components to avoid UTC offset date-shift for UTC+ timezones.',
-      'CC calendar: academic-year fix enhanced — detects non-monotonic (backward) date sequences in CC.xlsx to robustly handle year-wrap regardless of first-column month.',
-      'RR tracker: Path/Vac weeks show absence label with RR count in parens; initial implementation.',
+      'BV Thu PM: removed Main/MC from fixed slots — now SRV + SOC only; mainMin stays 3.',
+      'BV Thu AM: removed Surg from fixed slots — now Vulvar + 2×CT only; mainMin stays 2.',
+      'CC calendar: schedule ISO generation now uses local date components to avoid date-shift in UTC+ timezones.',
+      'CC calendar: academic-year fix now also detects backward jumps in the CC.xlsx date sequence, handling year-wrap regardless of which month the file starts in.',
     ]},
   { ver:'v4.045', date:'Oct 8', area:'Capacity Check resident count + BV Thu PM Main/MC rule', tags:['fix','rule'],
     notes:[
@@ -1664,7 +1653,7 @@ function parseSchedule(wb) {
 
       for (let ci = 0; ci < cols.length; ci++) {
         const col = cols[ci], date = dates[ci];
-        // Use local date components (not UTC) to avoid timezone-shift for UTC+ users
+        // Use local date components to avoid UTC-offset date shift for UTC+ timezones
         const _y = date.getFullYear(), _m = date.getMonth()+1, _d = date.getDate();
         const iso = `${_y}-${String(_m).padStart(2,'0')}-${String(_d).padStart(2,'0')}`;
         const day = String(dayNmRow[col] || '');
@@ -2714,13 +2703,10 @@ function computeRRAdmin(schedule) {
     for (const sess of ['AM','PM']) {
       for (const [r, v] of Object.entries(e[sess])) {
         if (!r || r.startsWith('FLEX')) continue;
-        if (!rrAdmin[week][r]) rrAdmin[week][r] = { RR:0, Admin:0, absence:null };
+        if (!rrAdmin[week][r]) rrAdmin[week][r] = { RR:0, Admin:0 };
         const nv = norm(v);
         if (nv === 'RR')    rrAdmin[week][r].RR++;
         if (nv === 'Admin') rrAdmin[week][r].Admin++;
-        // Track notable absences — first one found wins (AM before PM)
-        if (!rrAdmin[week][r].absence && nv && NOTABLE_ABSENT.has(nv))
-          rrAdmin[week][r].absence = nv;
       }
     }
   }
@@ -2803,8 +2789,7 @@ function buildRRTracker() {
     let rowTotal = 0;
     let rowCells = '';
     for (const w of weekOrder) {
-      const cnt     = rrAdmin[w]?.[r]?.RR || 0;
-      const absence = rrAdmin[w]?.[r]?.absence || null;
+      const cnt = rrAdmin[w]?.[r]?.RR || 0;
       rowTotal += cnt;
       const over  = lim !== null && cnt > lim;
       const atLim = lim !== null && cnt === lim;
@@ -2815,16 +2800,11 @@ function buildRRTracker() {
       else if (atLim)  { tdBg = 'background:#276749;'; spanStyle = 'color:#fff;font-weight:700'; }
       else if (low)    { tdBg = 'background:#c6f6d5;'; spanStyle = 'color:#276749;font-weight:600'; }
       else if (zero)   { tdBg = 'background:#fed7d7;'; spanStyle = 'color:#c53030'; }
-      // Show RR count normally; append absence label in parens for Path/Vac/Conf/Elective
-      const RR_ABS_LABELS = new Set(['Path','Vac','Conf','Elective']);
-      const absTag = (absence && RR_ABS_LABELS.has(absence))
-        ? ` <span style="font-size:.65rem;font-style:italic;opacity:.8">(${absence.toLowerCase()})</span>` : '';
       rowCells += `<td class="wsep" style="${tdBg}">${
         (cnt || lim !== null)
-          ? `<span style="${spanStyle}">${cnt || '0'}${over ? '✗' : ''}${absTag}</span>`
+          ? `<span style="${spanStyle}">${cnt || '0'}${over ? '✗' : ''}</span>`
           : '<span class="zero">–</span>'
       }</td>`;
-      }
     }
     rrBody += `<tr><td>${resDisplay(r)}${lim!==null?`<span style="font-size:.7rem;color:var(--muted);margin-left:4px">(max ${lim}/wk)</span>`:''}</td>${rowCells}<td class="wsep" style="font-weight:600">${rowTotal||'<span class="zero">–</span>'}</td></tr>`;
   }
@@ -5930,43 +5910,26 @@ function _parseCCData(data) {
   }
 
   // Academic-year fix: CC files for a Jul–Jun academic year may store Jan–Jun dates
-  // as the same calendar year as Jul–Dec (e.g. all 2026), so Jan–Jun need bumping to Y+1.
-  // Strategy A: detect a backward jump in the sorted sequence (year wrapped in the file)
-  // Strategy B: fallback — if first date is Jul–Dec, bump all same-year Jan–Jun dates
+  // as the same calendar year as the Jul–Dec dates (e.g. all 2026), so Jan–Jun need bumping.
+  // Primary: detect a backward jump in the sequence (year wrapped in spreadsheet columns).
+  // Fallback: if first date is Jul–Dec, bump all same-year Jan–Jun dates.
   if (G_ccFridays.length > 0) {
     const [firstYr] = G_ccFridays[0].split('-').map(Number);
-
-    // Look for first backward date jump (year wrap in spreadsheet columns)
     let wrapIdx = -1;
-    for (let _i = 1; _i < G_ccFridays.length; _i++) {
-      if (G_ccFridays[_i] < G_ccFridays[_i - 1]) { wrapIdx = _i; break; }
+    for (let _wi = 1; _wi < G_ccFridays.length; _wi++) {
+      if (G_ccFridays[_wi] < G_ccFridays[_wi - 1]) { wrapIdx = _wi; break; }
     }
-
-    if (wrapIdx >= 0) {
-      // Dates after wrapIdx that are still in firstYr and Jan–Jun → bump to firstYr+1
-      const fixIso = (iso, idx) => {
-        if (idx < wrapIdx) return iso;
-        const [yr, mo, dy] = iso.split('-');
-        return (+yr === firstYr && +mo < 7) ? `${firstYr + 1}-${mo}-${dy}` : iso;
-      };
+    const fixIso = (iso, idx) => {
+      if (wrapIdx >= 0 && idx < wrapIdx) return iso; // before wrap: leave alone
+      const [yr, mo, dy] = iso.split('-');
+      return (+yr === firstYr && +mo < 7) ? `${firstYr + 1}-${mo}-${dy}` : iso;
+    };
+    const [, firstMo] = G_ccFridays[0].split('-').map(Number);
+    if (wrapIdx >= 0 || firstMo >= 7) {
       G_ccFridays = G_ccFridays.map((iso, idx) => fixIso(iso, idx));
-      // Rebuild colIsoMap using the original ordering (colIsoMap built before this block)
       for (const ci of Object.keys(colIsoMap)) {
         const [yr, mo, dy] = colIsoMap[ci].split('-');
-        const origIdx = G_ccFridays.indexOf(colIsoMap[ci]); // already remapped above? use direct fix
-        colIsoMap[ci] = (+yr === firstYr && +mo < 7)
-          ? `${firstYr + 1}-${mo}-${dy}` : colIsoMap[ci];
-      }
-    } else {
-      // No backward jump detected — use original strategy (first month Jul–Dec)
-      const [, firstMo] = G_ccFridays[0].split('-').map(Number);
-      if (firstMo >= 7) {
-        const fixIso = iso => {
-          const [yr, mo, dy] = iso.split('-');
-          return (+yr === firstYr && +mo < 7) ? `${firstYr + 1}-${mo}-${dy}` : iso;
-        };
-        G_ccFridays = G_ccFridays.map(fixIso);
-        for (const ci of Object.keys(colIsoMap)) colIsoMap[ci] = fixIso(colIsoMap[ci]);
+        colIsoMap[ci] = (+yr === firstYr && +mo < 7) ? `${firstYr + 1}-${mo}-${dy}` : colIsoMap[ci];
       }
     }
   }
