@@ -28,6 +28,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .f.w140{flex:0 0 140px;}
 .f label{display:block;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500;}
 .f label .req{color:#c0392b;}
+.f label .opt{color:var(--text3);font-weight:400;font-style:italic;}
+.mode-tog{display:flex;gap:0;margin-bottom:1.25rem;}
+.mode-btn{flex:1;font-family:var(--mono);font-size:11px;font-weight:500;padding:8px 10px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);letter-spacing:0.03em;}
+.mode-btn:first-child{border-radius:var(--radius) 0 0 var(--radius);}
+.mode-btn:last-child{border-radius:0 var(--radius) var(--radius) 0;border-left:none;}
+.mode-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+.size-hint{font-size:11px;color:var(--text3);margin-top:4px;font-style:italic;}
 input[type=number],select{width:100%;padding:8px 10px;font-size:13px;font-family:var(--sans);border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--text);outline:none;transition:border-color .12s;}
 input[type=text]{width:100%;padding:8px 10px;font-size:13px;font-family:var(--sans);border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--text);outline:none;}
 input:focus,select:focus{border-color:var(--text);}
@@ -263,7 +270,7 @@ input:focus,select:focus{border-color:var(--text);}
 <body>
 <div class="top-banner">
   <span class="tb-author">A. Pulavarty</span>
-  <span class="tb-meta">v1.21 &nbsp;&middot;&nbsp; Last updated: October 4, 2026</span>
+  <span class="tb-meta">v1.25 &nbsp;&middot;&nbsp; Last updated: November 16, 2026</span>
 </div>
 <div class="page">
 <div class="masthead">
@@ -299,6 +306,36 @@ input:focus,select:focus{border-color:var(--text);}
       <!-- Change Log panel -->
       <div id="mpanel-changelog" style="display:none">
         <h3>Change Log</h3>
+        <div class="cl-entry">
+          <span class="cl-ver">v1.25</span><span class="cl-date">November 16, 2026</span>
+          <ul class="cl-items">
+            <li>New Biopsy mode (third toggle). ICD-10 D48.5 (neoplasm of uncertain behavior of skin) is the default; no site or size is needed for skin biopsies.</li>
+            <li>Skin biopsy: enter the number of shave, punch and incisional biopsies. Codes follow the CPT 2027 multiple-biopsy rules (11102/11103, 11104/11105, 11106/11107); 88305 is shown per specimen.</li>
+            <li>Excisional biopsy: choose the anatomic group and excised diameter to get the excision code (benign series, with the malignant series if final pathology is malignant). Repair is reported separately.</li>
+            <li>Special-site biopsy: ear 69100, lip 40490, eyelid skin including lid margin 67810, nail unit 11755, penis 54100, vulva/perineum 56605 + 56606.</li>
+          </ul>
+        </div>
+        <div class="cl-entry">
+          <span class="cl-ver">v1.24</span><span class="cl-date">November 16, 2026</span>
+          <ul class="cl-items">
+            <li>Shortened the note under clinical lesion diameter.</li>
+          </ul>
+        </div>
+        <div class="cl-entry">
+          <span class="cl-ver">v1.23</span><span class="cl-date">November 15, 2026</span>
+          <ul class="cl-items">
+            <li>New count-based Destruction mode (toggle at the top of the form). Actinic keratosis: 17000 for the first lesion, 17003 for each of the second through 14th, 17004 for 15 or more. Benign lesions other than skin tags and vascular lesions: 17110 (up to 14) or 17111 (15 or more). No size or site entry.</li>
+            <li>Special-site destruction, simple and extensive codes shown together: anus (46900, 46910, 46916, 46917; 46924), penis (54050, 54055, 54056, 54057; 54065), vulva (56501; 56515), eyelid lid margin (67850). Codes follow the CPT 2027 cross-reference for destruction in specific anatomic sites.</li>
+            <li>Descriptors now match the CPT 2027 wording: mucous membrane added to the face series for benign excision (11440–11446, “other benign lesion”), shave removal (11310–11313) and malignant destruction (17280–17286); all 88305 pathology descriptors use the level IV skin wording.</li>
+            <li>A copy of the current version is saved as index.html with every release.</li>
+          </ul>
+        </div>
+        <div class="cl-entry">
+          <span class="cl-ver">v1.22</span><span class="cl-date">November 15, 2026</span>
+          <ul class="cl-items">
+            <li>Lesion diameter is now optional. Leave it blank for skin tags and other count-based procedures: the tool returns the ICD-10 code, the size-independent CPT codes (skin tag removal, benign destruction) and pathology. Size-banded codes (excision, shave, malignant destruction, repair) are listed as code ranges marked "needs size" instead of a single code. Mohs AUC, margin and SLNB guidance need a size and are not shown when it is blank.</li>
+          </ul>
+        </div>
         <div class="cl-entry">
           <span class="cl-ver">v1.21</span><span class="cl-date">October 4, 2026</span>
           <ul class="cl-items">
@@ -459,6 +496,12 @@ input:focus,select:focus{border-color:var(--text);}
   </div>
 </div>
 <div id="form-section">
+<div class="mode-tog">
+  <button type="button" class="mode-btn active" id="mode-workup" onclick="setMode('workup')">Lesion workup</button>
+  <button type="button" class="mode-btn" id="mode-destr" onclick="setMode('destr')">Destruction (count-based)</button>
+  <button type="button" class="mode-btn" id="mode-bx" onclick="setMode('bx')">Biopsy</button>
+</div>
+<div id="workup-fields">
 
 
 <!-- DIAGNOSIS -->
@@ -797,11 +840,12 @@ input:focus,select:focus{border-color:var(--text);}
   <div class="fgt">Measurements</div>
   <div class="fr">
     <div class="f">
-      <label for="diameter">Clinical lesion diameter <span class="req">*</span></label>
+      <label for="diameter">Clinical lesion diameter <span class="opt">optional</span></label>
       <div class="iu">
         <input type="number" id="diameter" placeholder="0.0" min="0" step="0.1" style="flex:1">
         <span>cm</span>
       </div>
+      <div class="size-hint">Optional. Leave blank for skin tags and other count-based procedures.</div>
     </div>
     <div class="f">
       <label for="margin" id="margin-label">Surgical margin <span class="req">*</span></label>
@@ -831,7 +875,6 @@ input:focus,select:focus{border-color:var(--text);}
 </div>
 
 <div class="calc-box" id="calc-box"></div>
-<div class="err-box" id="err-box"></div>
 
 <!-- MELANOMA STAGING -->
 <div class="mel-staging" id="mel-staging">
@@ -863,6 +906,96 @@ input:focus,select:focus{border-color:var(--text);}
     </div>
   </div>
 </div>
+</div>
+<div id="destr-fields" style="display:none">
+<div class="fg">
+  <div class="fgt">Destruction</div>
+  <div class="fr">
+    <div class="f">
+      <label for="dz-type">Lesion type <span class="req">*</span></label>
+      <select id="dz-type" onchange="updateDzFields()">
+        <option value="">Select lesion type...</option>
+        <option value="ak">Actinic keratosis (premalignant)</option>
+        <option value="benign">Benign lesions, skin (eg, warts)</option>
+        <option value="site">Special site (anus, penis, vulva, eyelid margin)</option>
+      </select>
+    </div>
+    <div class="f" id="dz-count-wrap">
+      <label for="dz-count">Number of lesions <span class="req">*</span></label>
+      <input type="number" id="dz-count" placeholder="1" min="1" step="1">
+    </div>
+  </div>
+  <div class="fr" id="dz-site-wrap" style="display:none">
+    <div class="f">
+      <label for="dz-site">Site <span class="req">*</span></label>
+      <select id="dz-site">
+        <option value="">Select site...</option>
+        <option value="anus">Anus</option>
+        <option value="penis">Penis</option>
+        <option value="vulva">Vulva</option>
+        <option value="lid">Eyelid margin</option>
+      </select>
+    </div>
+  </div>
+  <div class="size-hint">Destruction codes are chosen by lesion count (AK, benign) or by site. No lesion size or location diagram is needed.</div>
+</div>
+</div>
+<div id="bx-fields" style="display:none">
+<div class="fg">
+  <div class="fgt">Biopsy</div>
+  <div class="fr">
+    <div class="f">
+      <label for="bx-site">Biopsy site <span class="req">*</span></label>
+      <select id="bx-site" onchange="updateBxFields()">
+        <option value="skin" selected>Skin, any site</option>
+        <option value="ear">Ear (external)</option>
+        <option value="lip">Lip</option>
+        <option value="lid">Eyelid, including lid margin</option>
+        <option value="nail">Nail unit</option>
+        <option value="penis">Penis</option>
+        <option value="vulva">Vulva or perineum</option>
+      </select>
+    </div>
+  </div>
+  <div id="bx-skin">
+    <div class="fr">
+      <div class="f"><label for="bx-shave">Shave (tangential)</label><input type="number" id="bx-shave" placeholder="0" min="0" step="1"></div>
+      <div class="f"><label for="bx-punch">Punch</label><input type="number" id="bx-punch" placeholder="0" min="0" step="1"></div>
+      <div class="f"><label for="bx-incis">Incisional</label><input type="number" id="bx-incis" placeholder="0" min="0" step="1"></div>
+    </div>
+    <div class="fr">
+      <div class="f">
+        <label for="bx-exc">Excisional biopsy (whole lesion removed)</label>
+        <select id="bx-exc" onchange="updateBxFields()">
+          <option value="no" selected>No</option>
+          <option value="yes">Yes, one lesion</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr" id="bx-exc-wrap" style="display:none">
+      <div class="f">
+        <label for="bx-exc-grp">Anatomic group <span class="req">*</span></label>
+        <select id="bx-exc-grp">
+          <option value="">Select group...</option>
+          <option value="F">Face, ears, eyelids, nose, lips, mucous membrane</option>
+          <option value="S">Scalp, neck, hands, feet, genitalia</option>
+          <option value="T">Trunk, arms, legs</option>
+        </select>
+      </div>
+      <div class="f">
+        <label for="bx-exc-size">Excised diameter <span class="req">*</span></label>
+        <div class="iu"><input type="number" id="bx-exc-size" placeholder="0.0" min="0" step="0.1" style="flex:1"><span>cm</span></div>
+        <div class="size-hint">Lesion plus margins.</div>
+      </div>
+    </div>
+  </div>
+  <div class="fr" id="bx-sp" style="display:none">
+    <div class="f"><label for="bx-sp-count">Number of lesions <span class="req">*</span></label><input type="number" id="bx-sp-count" placeholder="1" min="1" step="1"></div>
+  </div>
+  <div class="size-hint" id="bx-hint">ICD-10 D48.5 is used for all biopsies. No lesion size or location is needed for shave, punch or incisional biopsy.</div>
+</div>
+</div>
+<div class="err-box" id="err-box"></div>
 <button class="go-btn" id="go-btn">&#8594; GENERATE CPT CODES</button>
 <p class="hint">Results are estimates &mdash; verify all codes prior to billing.</p>
 </div>
@@ -1116,8 +1249,11 @@ function parseLoc(val){
 // ── Submit ────────────────────────────────────────────────────────────────
 document.getElementById('go-btn').addEventListener('click',function(){
   var err=document.getElementById('err-box'); err.style.display='none';
+  if(window.CPT_MODE==='destr'){ renderDestruction(); return; }
+  if(window.CPT_MODE==='bx'){ renderBiopsy(); return; }
   var diagVal  =document.getElementById('diagnosis').value;
   var locVal   =document.getElementById('loc-hidden').value;
+  var sizeBlank=(document.getElementById('diameter').value.trim()==='');
   var diameter =parseFloat(document.getElementById('diameter').value);
   var margin   =(parseFloat(document.getElementById('margin').value)||0)/10;
   var lat      =document.getElementById('lat').value;
@@ -1128,11 +1264,11 @@ document.getElementById('go-btn').addEventListener('click',function(){
   var errors=[];
   if(!diagVal)  errors.push('Please select a diagnosis.');
   if(!locVal)   errors.push('Please select a lesion location.');
-  if(isNaN(diameter)||diameter<=0) errors.push('Please enter a valid lesion diameter (must be > 0).');
+  if(!sizeBlank&&(isNaN(diameter)||diameter<=0)) errors.push('Please enter a valid lesion diameter (must be > 0), or leave it blank.');
   if(isNaN(margin)||margin<0)      errors.push('Please enter a valid surgical margin (0 or greater, in mm).');
   var repairRowEl=document.getElementById('repair-row');
   var repairInputEl=document.getElementById('repair-length');
-  if(repairRowEl.style.display!=='none'){
+  if(!sizeBlank&&repairRowEl.style.display!=='none'){
     var repVal2=parseFloat(repairInputEl.value);
     if(isNaN(repVal2)||repVal2<=0) errors.push('Please enter a valid repair length (must be > 0).');
   }
@@ -1150,6 +1286,17 @@ document.getElementById('go-btn').addEventListener('click',function(){
 
   var diag=parseDiag(diagVal);
   var loc=parseLoc(locVal);
+  if(sizeBlank){
+    var dtN=diag.dt, malN=isMalignant(dtN), areaN=loc.area;
+    renderNoSize({
+      lat:lat,
+      diagLabel:document.getElementById('diagnosis').options[document.getElementById('diagnosis').selectedIndex].text,
+      locLabel:loc.label,diagType:dtN,subtype:diag.sub,mal:malN,pr:pr,ic:ic,
+      area:areaN,areaLbl:areaN==='H'?'Area H (high-risk)':areaN==='M'?'Area M (medium-risk)':'Area L (low-risk)',
+      icd10:getICD10(dtN,loc,lat,diag.sub),cpt:cptGroups(loc),pathCPT:getPathCPT(dtN,diag.sub)
+    });
+    return;
+  }
   var excisionSize=r2(diameter+2*margin);
   // Use editable repair length field if visible and has a valid value
   var repairInput=document.getElementById('repair-length');
@@ -1209,6 +1356,302 @@ document.getElementById('go-btn').addEventListener('click',function(){
   });
 });
 
+// ── Results when lesion size is left blank ────────────────────────────────
+function codeRange(a){ return a[0]+'–'+a[a.length-1]; }
+function renderNoSize(r){
+  var isTag=(r.mal===false&&r.subtype==='tag');
+  var isSK=(r.mal===false&&r.subtype==='sk');
+  var isShave=(r.mal===false&&(r.subtype==='nevus'||r.subtype==='sk'));
+  var cg=r.cpt;
+  var sc=[], pend=[];
+  if(isTag){ sc.push({label:'Skin tag removal (up to 15)',codes:['11200'],suffix:'<span class="su">+11201 per additional 10</span>'}); }
+  if(isSK){ sc.push({label:'Destruction, benign (up to 14)',codes:['17110'],suffix:'<span class="su">17111 if 15 or more</span>'}); }
+  pend.push({label:'Excision',text:codeRange(EXC_CODES[(r.mal?'mal':'ben')+'|'+cg.x])+' series'});
+  pend.push({label:'Intermediate / complex repair',text:'needs repair length'});
+  if(r.mal) pend.push({label:'Destruction (ED&amp;C / LN2)',text:codeRange(DES_CODES[cg.x])+' series'});
+  if(isShave) pend.push({label:'Shave removal',text:codeRange(SHAVE_CODES[cg.x])+' series'});
+  function legRow(cd,ds){ return '<tr><td>'+cd+'</td><td>'+ds+'</td></tr>'; }
+  var scHtml='<hr class="cdiv"><div class="sl2" style="margin:2px 0 4px">Billing alternatives (choose one per lesion)</div>';
+  var firstStr='ICD-10: '+r.icd10.c, first=true;
+  sc.forEach(function(x){
+    var str='ICD-10: '+r.icd10.c+'; CPT codes: '+x.codes.join(', ');
+    if(first){ firstStr=str; }
+    scHtml+='<label class="cr sc-row"><input type="radio" name="scen" data-str="'+str+'"'+(first?' checked':'')+' onchange="pickScenario(this)"><span class="cl">'+x.label+':</span><span class="cv">'+x.codes.join(', ')+'</span>'+(x.suffix||'')+'</label>';
+    first=false;
+  });
+  if(!sc.length){ scHtml+='<div class="cr" style="padding-left:24px"><span class="cl">No size-independent CPT code for this diagnosis.</span></div>'; }
+  pend.forEach(function(x){
+    scHtml+='<div class="cr" style="padding-left:24px"><span class="cl">'+x.label+':</span><span class="cv" style="font-weight:400;color:var(--text3)">'+x.text+' — size needed</span></div>';
+  });
+  var scNotes='<p class="nt" style="margin-top:6px">Lesion size was not entered, so size-banded codes are shown as ranges only. Enter a lesion diameter to get a single excision, shave or destruction code, repair codes, and Mohs AUC, margin and SLNB guidance.</p>';
+  if(cg.n) scNotes+='<p class="nt" style="color:var(--unc-fg)">⚠ '+cg.n+'</p>';
+  var copyBlock='<div style="margin-top:10px;display:flex;align-items:stretch;gap:8px;">'
+    +'<button class="copy-btn" id="copy-codes-btn" data-codes="'+firstStr+'" onclick="copyCodes(this.dataset.codes)">Copy codes</button>'
+    +'<input type="text" class="copy-preview" id="copy-preview" value="'+firstStr+'">'
+    +'</div>';
+  var leg=legRow(r.icd10.c,r.icd10.d);
+  if(isTag){ leg+=legRow('11200','Removal of skin tags, multiple fibrocutaneous tags, any area; up to and including 15 lesions')+legRow('11201','Removal of skin tags, each additional 10 lesions or part thereof (add-on)'); }
+  if(isSK){ leg+=legRow('17110','Destruction of benign lesions other than skin tags or cutaneous vascular proliferative lesions; up to 14 lesions')+legRow('17111','Destruction of benign lesions other than skin tags or cutaneous vascular proliferative lesions; 15 or more lesions'); }
+  leg+=legRow(r.pathCPT.c,r.pathCPT.d);
+  var html='<div class="rh"><span>Billing Estimate</span><button class="new-btn" id="reset-btn">← New case</button></div>'
+    +'<div class="card"><div class="ch">CPT / ICD-10 Codes</div><div class="cb">'
+      +'<div class="cg">'
+        +'<div class="cr"><span class="cl">Diagnosis:</span><span class="cv">'+r.diagLabel+'</span></div>'
+        +'<div class="cr"><span class="cl">Location:</span><span class="cv">'+r.locLabel+' — '+r.areaLbl+'</span></div>'
+        +'<div class="cr"><span class="cl">ICD-10:</span><span class="cv">'+r.icd10.c+'</span></div>'
+        +'<div class="cr"><span class="cl">Lesion diameter:</span><span class="cv">Not entered</span></div>'
+        +'<div class="cr"><span class="cl">Surgical pathology:</span><span class="cv">'+r.pathCPT.c+'</span></div>'
+        +scHtml+scNotes+copyBlock
+      +'</div>'
+    +'</div></div>'
+    +'<div class="card"><div class="ch">Code Descriptions</div><div class="cb"><table class="leg">'+leg+'</table>'
+      +'<p class="nt" style="margin-top:6px">Preoperative estimates only: confirm every code against the procedure performed and documented. Codes follow CPT and Medicare NCCI conventions (2026); payer and MAC policies vary.</p>'
+    +'</div></div>';
+  sendToSheet({
+    lat:r.lat,diagLabel:r.diagLabel,diagType:r.diagType,mal:r.mal,locLabel:r.locLabel,areaLbl:r.areaLbl,pr:r.pr,ic:r.ic,
+    diameter:null,margin:0,excisionSize:null,repairLength:null,icd10:r.icd10,
+    excision:{c:'Size not entered',d:''},repair:{int:{c:'Size not entered',d:''},cx:{c:'Size not entered',d:''}},
+    dest:{c:'Size not entered'},mohsCPT:{first:{c:''},addon:{c:''}},mohs:{res:'unk',note:'Size not entered'},
+    marginG:{rec:'N/A'},slnb:null,warnings:['Lesion size not entered; size-banded codes withheld.']
+  });
+  document.getElementById('form-section').style.display='none';
+  var out=document.getElementById('out');
+  out.innerHTML=html;
+  out.style.display='block';
+  document.getElementById('reset-btn').addEventListener('click',doReset);
+}
+
+// ── Count-based destruction mode ──────────────────────────────────────────
+// Source: CPT 2027 Professional Edition. 17000-17004 and 17110-17111 (Destruction, Benign or Premalignant Lesions); special-site codes per the
+// cross-reference "For destruction of lesion(s) in specific anatomic sites" (Integumentary guidelines). Vagina, conjunctiva and vestibule of mouth are not offered.
+window.CPT_MODE='workup';
+window.setMode=function(m){
+  window.CPT_MODE=m;
+  document.getElementById('workup-fields').style.display=(m==='workup')?'':'none';
+  document.getElementById('destr-fields').style.display=(m==='destr')?'':'none';
+  document.getElementById('bx-fields').style.display=(m==='bx')?'':'none';
+  document.getElementById('mode-workup').classList.toggle('active',m==='workup');
+  document.getElementById('mode-destr').classList.toggle('active',m==='destr');
+  document.getElementById('mode-bx').classList.toggle('active',m==='bx');
+  document.getElementById('err-box').style.display='none';
+};
+window.updateDzFields=function(){
+  var t=document.getElementById('dz-type').value;
+  document.getElementById('dz-site-wrap').style.display=(t==='site')?'':'none';
+  document.getElementById('dz-count-wrap').style.display=(t==='site')?'none':'';
+};
+var DZ_SITE={
+  anus:{label:'Anus',stem:'Destruction of lesion(s), anus (eg, condyloma, papilloma, molluscum contagiosum, herpetic vesicle), ',
+    simple:[['46900','simple; chemical'],['46910','simple; electrodesiccation'],['46916','simple; cryosurgery'],['46917','simple; laser surgery']],
+    ext:['46924','extensive (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery)']},
+  penis:{label:'Penis',stem:'Destruction of lesion(s), penis (eg, condyloma, papilloma, molluscum contagiosum, herpetic vesicle), ',
+    simple:[['54050','simple; chemical'],['54055','simple; electrodesiccation'],['54056','simple; cryosurgery'],['54057','simple; laser surgery']],
+    ext:['54065','extensive (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery)']},
+  vulva:{label:'Vulva',stem:'Destruction of lesion(s), vulva; ',
+    simple:[['56501','simple (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery)']],
+    ext:['56515','extensive (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery)']},
+  lid:{label:'Eyelid margin',stem:'',simple:[['67850','Destruction of lesion of lid margin (up to 1 cm)']],ext:null}
+};
+function renderDestruction(){
+  var err=document.getElementById('err-box'); err.style.display='none';
+  var t=document.getElementById('dz-type').value;
+  var n=parseInt(document.getElementById('dz-count').value,10);
+  var site=document.getElementById('dz-site').value;
+  var errors=[];
+  if(!t) errors.push('Please select a lesion type.');
+  if(t==='site'){ if(!site) errors.push('Please select a site.'); }
+  else if(t){ if(isNaN(n)||n<1||String(parseFloat(document.getElementById('dz-count').value))!==String(n)) errors.push('Please enter the number of lesions (a whole number, 1 or more).'); }
+  if(errors.length){ err.innerHTML=errors.join('<br>'); err.style.display='block'; return; }
+  function legRow(cd,ds){ return '<tr><td>'+cd+'</td><td>'+ds+'</td></tr>'; }
+  var title,icd='',sc=[],leg='',notes='',procLabel,cntLabel='';
+  if(t==='ak'){
+    title='Actinic keratosis (premalignant lesions)'; procLabel='Destruction, premalignant lesions'; icd='L57.0'; cntLabel=n+' lesion'+(n>1?'s':'');
+    var codes;
+    if(n===1) codes=['17000'];
+    else if(n<=14) codes=['17000',un('17003',n-1)];
+    else codes=['17004'];
+    sc.push({label:n===1?'First lesion':(n<=14?'First lesion + each additional (2nd–14th)':'15 or more lesions'),codes:codes});
+    leg=legRow('L57.0','Actinic keratosis')
+      +legRow('17000','Destruction (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery, surgical curettement), premalignant lesions (eg, actinic keratoses); first lesion')
+      +legRow('17003','Second through 14 lesions, each (add-on, reported with 17000)')
+      +legRow('17004','Destruction, premalignant lesions (eg, actinic keratoses), 15 or more lesions');
+    notes='<p class="nt" style="margin-top:6px">17003 is an add-on reported with 17000, once for each lesion from the second through the 14th. 17004 is not reported with 17000–17003 (CPT 2027).</p>';
+  } else if(t==='benign'){
+    title='Benign lesions, skin'; procLabel='Destruction, benign lesions'; cntLabel=n+' lesion'+(n>1?'s':'');
+    sc.push({label:n<=14?'Up to 14 lesions':'15 or more lesions',codes:[n<=14?'17110':'17111']});
+    leg=legRow('17110','Destruction (eg, laser surgery, electrosurgery, cryosurgery, chemosurgery, surgical curettement), of benign lesions other than skin tags or cutaneous vascular proliferative lesions; up to 14 lesions')
+      +legRow('17111','Destruction of benign lesions other than skin tags or cutaneous vascular proliferative lesions; 15 or more lesions');
+    notes='<p class="nt" style="margin-top:6px">Excludes skin tags (11200, 11201) and cutaneous vascular proliferative lesions (17106–17108). Includes common and plantar warts. ICD-10 depends on the diagnosis; enter it from the clinical diagnosis.</p>';
+  } else {
+    var S=DZ_SITE[site];
+    title='Special site: '+S.label; procLabel='Destruction, '+S.label.toLowerCase();
+    S.simple.forEach(function(x){ sc.push({label:(site==='lid'?'Lid margin lesion (up to 1 cm)':x[1].replace(/^simple; /,'Simple, ').replace(/^simple \(.*$/,'Simple')),codes:[x[0]]}); leg+=legRow(x[0],S.stem+x[1]); });
+    if(S.ext){ sc.push({label:'Extensive',codes:[S.ext[0]]}); leg+=legRow(S.ext[0],S.stem+S.ext[1]); }
+    notes='<p class="nt" style="margin-top:6px">'+(site==='lid'
+      ?'67850 is for lesions of the lid margin. For removal of a lesion involving mainly the skin of the eyelid, CPT lists 11310–11313, 11440–11446, 11640–11646 and 17000–17004 (use the Lesion workup or this mode’s AK option).'
+      :'CPT directs destruction of lesions at this site to these codes rather than 17000–17004 or 17110–17111 (Integumentary System guidelines, CPT 2027). Simple and extensive codes are both shown; choose by the procedure performed.')+'</p>';
+  }
+  var scHtml='<hr class="cdiv"><div class="sl2" style="margin:2px 0 4px">Billing alternatives (choose one)</div>';
+  var firstStr='';
+  sc.forEach(function(x){
+    var str=(icd?'ICD-10: '+icd+'; ':'')+'CPT codes: '+x.codes.join(', ');
+    var isFirst=!firstStr; if(isFirst) firstStr=str;
+    scHtml+='<label class="cr sc-row"><input type="radio" name="scen" data-str="'+str+'"'+(isFirst?' checked':'')+' onchange="pickScenario(this)"><span class="cl">'+x.label+':</span><span class="cv">'+x.codes.join(', ')+'</span></label>';
+  });
+  var copyBlock='<div style="margin-top:10px;display:flex;align-items:stretch;gap:8px;">'
+    +'<button class="copy-btn" id="copy-codes-btn" data-codes="'+firstStr+'" onclick="copyCodes(this.dataset.codes)">Copy codes</button>'
+    +'<input type="text" class="copy-preview" id="copy-preview" value="'+firstStr+'">'
+    +'</div>';
+  var html='<div class="rh"><span>Billing Estimate</span><button class="new-btn" id="reset-btn">← New case</button></div>'
+    +'<div class="card"><div class="ch">CPT'+(icd?' / ICD-10':'')+' Codes</div><div class="cb"><div class="cg">'
+      +'<div class="cr"><span class="cl">Procedure:</span><span class="cv">'+procLabel+'</span></div>'
+      +'<div class="cr"><span class="cl">Lesion type:</span><span class="cv">'+title+'</span></div>'
+      +(cntLabel?'<div class="cr"><span class="cl">Number of lesions:</span><span class="cv">'+cntLabel+'</span></div>':'')
+      +(icd?'<div class="cr"><span class="cl">ICD-10:</span><span class="cv">'+icd+'</span></div>':'')
+      +scHtml+notes+copyBlock
+    +'</div></div></div>'
+    +'<div class="card"><div class="ch">Code Descriptions</div><div class="cb"><table class="leg">'+leg+'</table>'
+      +'<p class="nt" style="margin-top:6px">Preoperative estimates only: confirm every code against the procedure performed and documented. Codes follow CPT 2027; payer and MAC policies vary.</p>'
+    +'</div></div>';
+  sendToSheet({
+    lat:'U',diagLabel:'Destruction: '+title+(cntLabel?', '+cntLabel:''),diagType:'DESTRUCTION',mal:false,locLabel:'N/A',areaLbl:'N/A',pr:'N/A',ic:'N/A',
+    diameter:null,margin:0,excisionSize:null,repairLength:null,icd10:{c:icd||'',d:''},
+    excision:{c:'N/A',d:''},repair:{int:{c:'N/A',d:''},cx:{c:'N/A',d:''}},
+    dest:{c:sc.map(function(x){return x.codes.join(' ');}).join(' | ')},mohsCPT:{first:{c:''},addon:{c:''}},mohs:{res:'unk',note:'Destruction mode'},
+    marginG:{rec:'N/A'},slnb:null,warnings:[]
+  });
+  document.getElementById('form-section').style.display='none';
+  var out=document.getElementById('out');
+  out.innerHTML=html; out.style.display='block';
+  document.getElementById('reset-btn').addEventListener('click',doReset);
+}
+
+// ── Biopsy mode ─────────────────────────────────────────────────────────────
+// Source: CPT 2027 Professional Edition, Biopsy of Skin (11102-11107) multiple-biopsy guidelines; site-specific biopsy codes per the
+// cross-references under 11102-11107 and 67810. ICD-10 D48.5 is the default for all biopsies.
+window.updateBxFields=function(){
+  var site=document.getElementById('bx-site').value;
+  var skin=(site==='skin');
+  document.getElementById('bx-skin').style.display=skin?'':'none';
+  document.getElementById('bx-sp').style.display=skin?'none':'';
+  document.getElementById('bx-exc-wrap').style.display=(skin&&document.getElementById('bx-exc').value==='yes')?'':'none';
+};
+var BX_SITE={
+  ear:{label:'Ear (external)',codes:[['69100','Biopsy external ear']],
+    note:'CPT directs biopsy of the ear to 69100 rather than 11102–11107. Payer policy on ear skin biopsies can differ; confirm with the coding team.'},
+  lip:{label:'Lip',codes:[['40490','Biopsy of lip']],
+    note:'CPT directs biopsy of the lip to 40490 rather than 11102–11107. Payer policy can differ; confirm with the coding team.'},
+  lid:{label:'Eyelid, including lid margin',codes:[['67810','Incisional biopsy of eyelid skin including lid margin']],
+    note:'For biopsy of eyelid skin alone, CPT lists 11102–11107 (choose Skin, any site).'},
+  nail:{label:'Nail unit',codes:[['11755','Biopsy of nail unit (eg, plate, bed, matrix, hyponychium, proximal and lateral nail folds) (separate procedure)']],note:''},
+  penis:{label:'Penis',codes:[['54100','Biopsy of penis; (separate procedure)']],note:''},
+  vulva:{label:'Vulva or perineum',codes:[['56605','Biopsy of vulva or perineum (separate procedure); 1 lesion'],['56606','Biopsy of vulva or perineum (separate procedure); each separate additional lesion (add-on)']],note:''}
+};
+var BX_SKIN={
+  '11102':'Tangential biopsy of skin (eg, shave, scoop, saucerize, curette); single lesion',
+  '11103':'Tangential biopsy of skin; each separate/additional lesion (add-on)',
+  '11104':'Punch biopsy of skin (including simple closure, when performed); single lesion',
+  '11105':'Punch biopsy of skin; each separate/additional lesion (add-on)',
+  '11106':'Incisional biopsy of skin (eg, wedge) (including simple closure, when performed); single lesion',
+  '11107':'Incisional biopsy of skin; each separate/additional lesion (add-on)'
+};
+// Primary code = most invasive technique present (11105 needs 11104 or 11106; 11107 needs 11106). Matches the CPT 2027 examples.
+function bxSkinCodes(s,p,i){
+  var prim=i>0?'incis':(p>0?'punch':(s>0?'shave':null));
+  if(!prim) return [];
+  var P={shave:'11102',punch:'11104',incis:'11106'}, A={shave:'11103',punch:'11105',incis:'11107'}, N={shave:s,punch:p,incis:i};
+  var out=[V(P[prim])];
+  ['shave','punch','incis'].forEach(function(t){ var k=N[t]-(t===prim?1:0); if(k>0) out.push(un(V(A[t]),k)); });
+  return out;
+}
+window.bxSkinCodes=bxSkinCodes;
+function renderBiopsy(){
+  var err=document.getElementById('err-box'); err.style.display='none';
+  var site=document.getElementById('bx-site').value;
+  var errors=[];
+  function cnt(id){ var v=document.getElementById(id).value.trim(); if(v==='') return 0; var n=Number(v); return (Math.floor(n)===n&&n>=0)?n:NaN; }
+  var s=0,p=0,i=0,exc=false,grp='',size=NaN,n=0;
+  if(site==='skin'){
+    s=cnt('bx-shave'); p=cnt('bx-punch'); i=cnt('bx-incis');
+    exc=(document.getElementById('bx-exc').value==='yes');
+    if(isNaN(s)||isNaN(p)||isNaN(i)) errors.push('Enter biopsy counts as whole numbers (0 or more).');
+    else if(s+p+i===0&&!exc) errors.push('Enter at least one biopsy, or select an excisional biopsy.');
+    if(exc){
+      grp=document.getElementById('bx-exc-grp').value; size=parseFloat(document.getElementById('bx-exc-size').value);
+      if(!grp) errors.push('Please select the anatomic group for the excisional biopsy.');
+      if(isNaN(size)||size<=0) errors.push('Please enter a valid excised diameter (must be > 0).');
+    }
+  } else {
+    var raw=document.getElementById('bx-sp-count').value.trim(); n=Number(raw);
+    if(raw===''||Math.floor(n)!==n||n<1) errors.push('Please enter the number of lesions (a whole number, 1 or more).');
+  }
+  if(errors.length){ err.innerHTML=errors.join('<br>'); err.style.display='block'; return; }
+  function legRow(cd,ds){ return '<tr><td>'+cd+'</td><td>'+ds+'</td></tr>'; }
+  var icd='D48.5', sc=[], leg=legRow('D48.5','Neoplasm of uncertain behavior of skin'), notes='', specimens=0, title, procLabel, cntLabel='';
+  if(site==='skin'){
+    var bc=bxSkinCodes(s,p,i), tot=s+p+i;
+    specimens=tot+(exc?1:0);
+    title='Skin'; procLabel=[tot?'Biopsy':'',exc?'Excisional biopsy':''].filter(Boolean).join(' + ');
+    cntLabel=[s?s+' shave':'',p?p+' punch':'',i?i+' incisional':'',exc?'1 excisional':''].filter(Boolean).join(', ');
+    var exB=null,exM=null;
+    if(exc){ exB=getExcision(false,{x:grp},size); exM=getExcision(true,{x:grp},size); }
+    if(tot&&!exc) sc.push({label:'Biopsy codes',codes:bc});
+    if(exc){
+      sc.push({label:(tot?'Biopsies + excision':'Excision')+', benign series (pre-pathology)',codes:bc.concat([exB.c])});
+      sc.push({label:(tot?'Biopsies + excision':'Excision')+', if final pathology is malignant',codes:bc.concat([exM.c])});
+      leg+=legRow(exB.c,exB.d)+legRow(exM.c,exM.d);
+    }
+    if(tot){ Object.keys(BX_SKIN).forEach(function(c){ if(bc.join(' ').indexOf(c)>-1) leg+=legRow(c,BX_SKIN[c]); }); }
+    if(tot) notes+='<p class="nt" style="margin-top:6px">Mixed techniques: the primary code is the most invasive technique (incisional, then punch, then shave); each additional lesion takes the add-on for its own technique (11103, 11105, 11107). 11107 is reported only with 11106. Simple closure is included in 11104 and 11106 (CPT 2027).</p>';
+    if(exc) notes+='<p class="nt">Excisional biopsy is reported as an excision by excised diameter (lesion plus margins), not as a biopsy. Repair is reported separately; use the Lesion workup for repair codes. Simple closure is included in the excision code.</p>';
+    if(tot) notes+='<p class="nt">Biopsy of a lesion that is then excised at the same session: NCCI policy applies and is not in CPT; confirm with the coding team.</p>';
+  } else {
+    var S=BX_SITE[site];
+    specimens=n; title=S.label; procLabel='Biopsy, '+S.label.toLowerCase(); cntLabel=n+' lesion'+(n>1?'s':'');
+    var codes=[V(S.codes[0][0])];
+    if(site==='vulva'&&n>1) codes.push(un(V('56606'),n-1));
+    sc.push({label:S.label,codes:codes});
+    S.codes.forEach(function(x){ if(site==='vulva'&&n===1&&x[0]==='56606') return; leg+=legRow(V(x[0]),x[1]); });
+    if(S.note) notes+='<p class="nt" style="margin-top:6px">'+S.note+'</p>';
+    if(site!=='vulva'&&n>1) notes+='<p class="nt">CPT provides no add-on code for additional lesions at this site; reporting of multiple lesions depends on payer policy.</p>';
+  }
+  leg+=legRow('88305','Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair');
+  var scHtml='<hr class="cdiv"><div class="sl2" style="margin:2px 0 4px">Billing alternatives (choose one)</div>';
+  var firstStr='';
+  sc.forEach(function(x){
+    var str='ICD-10: '+icd+'; CPT codes: '+x.codes.join(', ');
+    var isFirst=!firstStr; if(isFirst) firstStr=str;
+    scHtml+='<label class="cr sc-row"><input type="radio" name="scen" data-str="'+str+'"'+(isFirst?' checked':'')+' onchange="pickScenario(this)"><span class="cl">'+x.label+':</span><span class="cv">'+x.codes.join(', ')+'</span></label>';
+  });
+  var copyBlock='<div style="margin-top:10px;display:flex;align-items:stretch;gap:8px;">'
+    +'<button class="copy-btn" id="copy-codes-btn" data-codes="'+firstStr+'" onclick="copyCodes(this.dataset.codes)">Copy codes</button>'
+    +'<input type="text" class="copy-preview" id="copy-preview" value="'+firstStr+'"></div>';
+  var html='<div class="rh"><span>Billing Estimate</span><button class="new-btn" id="reset-btn">← New case</button></div>'
+    +'<div class="card"><div class="ch">CPT / ICD-10 Codes</div><div class="cb"><div class="cg">'
+      +'<div class="cr"><span class="cl">Procedure:</span><span class="cv">'+procLabel+'</span></div>'
+      +'<div class="cr"><span class="cl">Site:</span><span class="cv">'+title+'</span></div>'
+      +'<div class="cr"><span class="cl">Lesions:</span><span class="cv">'+cntLabel+'</span></div>'
+      +'<div class="cr"><span class="cl">ICD-10:</span><span class="cv">'+icd+'</span></div>'
+      +'<div class="cr"><span class="cl">Surgical pathology:</span><span class="cv">'+un('88305',specimens)+'</span></div>'
+      +'<div class="opt-caveat">Billed separately by pathology lab — not included in surgeon fee. One unit per specimen; pathology level is set by the specimen type (88300–88309).</div>'
+      +scHtml+notes+copyBlock
+    +'</div></div></div>'
+    +'<div class="card"><div class="ch">Code Descriptions</div><div class="cb"><table class="leg">'+leg+'</table>'
+      +'<p class="nt" style="margin-top:6px">Preoperative estimates only: confirm every code against the procedure performed and documented. Codes follow CPT 2027; payer and MAC policies vary.</p>'
+    +'</div></div>';
+  sendToSheet({
+    lat:'U',diagLabel:'Biopsy: '+title+', '+cntLabel,diagType:'BIOPSY',mal:false,locLabel:title,areaLbl:'N/A',pr:'N/A',ic:'N/A',
+    diameter:(exc?size:null),margin:0,excisionSize:(exc?size:null),repairLength:null,icd10:{c:icd,d:'Neoplasm of uncertain behavior of skin'},
+    excision:{c:'N/A',d:''},repair:{int:{c:'N/A',d:''},cx:{c:'N/A',d:''}},
+    dest:{c:sc.map(function(x){return x.codes.join(' ');}).join(' | ')},mohsCPT:{first:{c:''},addon:{c:''}},mohs:{res:'unk',note:'Biopsy mode'},
+    marginG:{rec:'N/A'},slnb:null,warnings:[]
+  });
+  document.getElementById('form-section').style.display='none';
+  var out=document.getElementById('out');
+  out.innerHTML=html; out.style.display='block';
+  document.getElementById('reset-btn').addEventListener('click',doReset);
+}
+
 function doReset(){
   function el(id){ return document.getElementById(id); }
   function safe(id, fn){ var e=el(id); if(e) fn(e); }
@@ -1219,6 +1662,14 @@ function doReset(){
   safe('pr',        function(e){ e.value='primary'; });
   safe('ic',        function(e){ e.value='no'; });
   safe('diameter',  function(e){ e.value=''; });
+  safe('dz-type',   function(e){ e.value=''; });
+  safe('dz-count',  function(e){ e.value=''; });
+  safe('dz-site',   function(e){ e.value=''; });
+  if(window.updateDzFields) updateDzFields();
+  safe('bx-site',   function(e){ e.value='skin'; });
+  ['bx-shave','bx-punch','bx-incis','bx-exc-size','bx-sp-count','bx-exc-grp'].forEach(function(id){ safe(id,function(e){ e.value=''; }); });
+  safe('bx-exc',    function(e){ e.value='no'; });
+  if(window.updateBxFields) updateBxFields();
   safe('margin',    function(e){ e.value=''; delete e.dataset.userEdited; });
 
   // Repair length
@@ -1421,7 +1872,8 @@ var CPT_VALID=(function(){
    +'13100 13101 13102 13120 13121 13122 13131 13132 13133 13151 13152 13153 '
    +'14000 14001 14020 14021 14040 14041 14060 14061 14301 14302 '
    +'15200 15201 15220 15221 15240 15241 15260 15261 '
-   +'17000 17003 17004 17110 17111 '
+   +'11102 11103 11104 11105 11106 11107 11755 40490 54100 56605 56606 67810 69100 '
+   +'17000 17003 17004 17110 17111 46900 46910 46916 46917 46924 54050 54055 54056 54057 54065 56501 56515 67850 '
    +'17260 17261 17262 17263 17264 17266 17270 17271 17272 17273 17274 17276 17280 17281 17282 17283 17284 17286 '
    +'17311 17312 17313 17314 17315 88304 88305 88307 88341 88342';
   var o={}; s.split(' ').forEach(function(k){ if(k) o[k]=1; }); return o;
@@ -1513,11 +1965,12 @@ var EXC_CODES={
   'ben|S':['11420','11421','11422','11423','11424','11426'],
   'ben|T':['11400','11401','11402','11403','11404','11406']
 };
+var X_LABEL_MM={F:'face/ears/eyelids/nose/lips/mucous membrane',S:'scalp/neck/hands/feet/genitalia',T:'trunk/arms/legs'};
 var X_LABEL={F:'face/ears/eyelids/nose/lips',S:'scalp/neck/hands/feet/genitalia',T:'trunk/arms/legs'};
 function getExcision(mal,cg,size){
   var i=band(EXC_LIM,r1(size));
   return {c:V(EXC_CODES[(mal?'mal':'ben')+'|'+cg.x][i]),
-          d:'Excision, '+(mal?'malignant':'benign')+' lesion'+(mal?' including margins':'')+', '+X_LABEL[cg.x]+', '+EXC_BANDS[i]};
+          d:'Excision, '+(mal?'malignant':(cg.x==='F'?'other benign':'benign'))+' lesion'+(mal?' including margins':'')+', '+(mal?X_LABEL:X_LABEL_MM)[cg.x]+', '+EXC_BANDS[i]};
 }
 
 // Destruction, malignant lesion (by lesion diameter)
@@ -1527,7 +1980,7 @@ function getDest(mal,cg,size){
     return {c:'N/A',d:'Destruction of a malignant lesion does not apply to a benign diagnosis. For premalignant lesions (AK) use 17000; for benign lesions other than skin tags use 17110/17111.'};
   }
   var i=band(EXC_LIM,r1(size));
-  return {c:V(DES_CODES[cg.x][i]),d:'Destruction, malignant lesion, '+X_LABEL[cg.x]+', '+EXC_BANDS[i]};
+  return {c:V(DES_CODES[cg.x][i]),d:'Destruction, malignant lesion, '+X_LABEL_MM[cg.x]+', '+EXC_BANDS[i]};
 }
 
 // Shave removal (by lesion diameter)
@@ -1536,7 +1989,7 @@ var SHAVE_BANDS=['\u22640.5 cm','0.6\u20131.0 cm','1.1\u20132.0 cm','>2.0 cm'];
 var SHAVE_CODES={F:['11310','11311','11312','11313'],S:['11305','11306','11307','11308'],T:['11300','11301','11302','11303']};
 function getShave(cg,diam){
   var i=band(SHAVE_LIM,r1(diam));
-  return {c:V(SHAVE_CODES[cg.x][i]),d:'Shaving of epidermal or dermal lesion, single lesion, '+X_LABEL[cg.x]+', '+SHAVE_BANDS[i]};
+  return {c:V(SHAVE_CODES[cg.x][i]),d:'Shaving of epidermal or dermal lesion, single lesion, '+X_LABEL_MM[cg.x]+', '+SHAVE_BANDS[i]};
 }
 
 // Repair (by total repair length, rounded to 0.1 cm)
@@ -2387,7 +2840,7 @@ function getPathCPT(diagType, subtype) {
 
   var panels = {
     'LM_MIS': {
-      c:'88305', d:'Surgical pathology, gross and microscopic — skin excision / biopsy',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'Standard for melanoma in situ and lentigo maligna.',
       ihc:[
         {ab:'S100',     purpose:'Melanocytic marker — sensitive, not specific'},
@@ -2397,7 +2850,7 @@ function getPathCPT(diagType, subtype) {
       ]
     },
     'MELANOMA_INV': {
-      c:'88305', d:'Surgical pathology, gross and microscopic — skin excision / biopsy',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'Standard for invasive melanoma.',
       ihc:[
         {ab:'S100',     purpose:'Melanocytic marker — sensitive, not specific'},
@@ -2408,7 +2861,7 @@ function getPathCPT(diagType, subtype) {
       ]
     },
     'MCC': {
-      c:'88305', d:'Surgical pathology, gross and microscopic — skin excision / biopsy',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'Standard for Merkel cell carcinoma.',
       ihc:[
         {ab:'CK20',         purpose:'Dot-like perinuclear positivity — pathognomonic for MCC'},
@@ -2426,7 +2879,7 @@ function getPathCPT(diagType, subtype) {
       ]
     },
     'AFX': {
-      c:'88305', d:'Surgical pathology, gross and microscopic — skin excision / biopsy',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'AFX is a diagnosis of exclusion — IHC used to rule out mimics.',
       ihc:[
         {ab:'S100',   purpose:'Negative — excludes melanoma and desmoplastic melanoma'},
@@ -2480,7 +2933,7 @@ function getPathCPT(diagType, subtype) {
       ]
     },
     'SEBACEOUS_CA': {
-      c:'88305', d:'Surgical pathology, gross and microscopic — skin excision / biopsy',
+      c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'Standard for sebaceous carcinoma. Consider MMR IHC if Muir-Torre syndrome is suspected.',
       ihc:[
         {ab:'Adipophilin', purpose:'Lipid droplet marker — highlights sebaceous differentiation'},
@@ -2525,15 +2978,15 @@ function getPathCPT(diagType, subtype) {
   }
   // BCC, SCC, KA — no IHC
   if (noIHC.indexOf(diagType) >= 0) {
-    return {c:'88305', d:'Surgical pathology, gross and microscopic — skin biopsy / excision',
+    return {c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'IHC not routinely required for this diagnosis.', ihc:null};
   }
   if(diagType==='DN_MODERATE'||diagType==='DN_SEVERE'){
-    return{c:'88305',d:'Surgical pathology, gross and microscopic — skin excision (dysplastic nevus re-excision)',
+    return{c:'88305',d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
       note:'Dysplastic nevi billed under benign excision series (11400–11446) per payer guidelines. IHC not routinely required — diagnosis established on prior biopsy. Confirm with institutional billing compliance.',ihc:null};
   }
   // Default malignant
-  return {c:'88305', d:'Surgical pathology, gross and microscopic — skin biopsy / excision',
+  return {c:'88305', d:'Surgical pathology, level IV: skin, other than cyst/tag/debridement/plastic repair',
     note:'Standard for most dermatologic malignant excisions and biopsies.', ihc:null};
 }
 
